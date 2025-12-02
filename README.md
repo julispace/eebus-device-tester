@@ -45,7 +45,6 @@ go build
 ## Web UI
 
 - Default UI: http://localhost:8080 
-- 
 ## Certificates
 
 If `cert.pem`/`key.pem` are not present next to the executable, the program creates self-signed files on first run.
@@ -53,4 +52,6 @@ If `cert.pem`/`key.pem` are not present next to the executable, the program crea
 
 ## Notes
 
-Large parts of
+Based on the [eebus-go controlbox example](https://github.com/enbility/eebus-go/tree/dev/examples/controlbox).
+
+Additionally as I have never written GO before and have little experience in webdev, a sizeable portion has been written by coding agents. 
