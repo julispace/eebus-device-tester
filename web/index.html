@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>EEBUS Device Tester</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg: #f6f8fa;
+      --card: #ffffff;
+      --muted: #6b7280;
+      --accent: #2563eb;
+      --success: #059669;
+      --danger: #ef4444;
+      --code-bg: #111;
+      --code-color: #bada55;
+    }
+    html,body{height:100%;margin:0;background:var(--bg);font-family:Inter, Roboto, Arial, sans-serif;color:#111}
+    .app { display:flex; flex-direction:column; height:100vh; gap:12px; padding:12px; box-sizing:border-box; }
+    header { display:flex; align-items:center; justify-content:space-between; }
+    h1{font-size:20px;margin:0}
+    .top { display:flex; gap:12px; align-items:flex-start; }
+    .card{ background:var(--card); border-radius:8px; box-shadow:0 1px 2px rgba(16,24,40,0.03); padding:12px; }
+    /* draggable splitter between left and right columns */
+    .splitter{ width:10px; cursor:col-resize; background:linear-gradient(90deg, transparent, rgba(0,0,0,0.06), transparent); border-radius:4px; align-self:stretch; }
+    .splitter:hover{ background:linear-gradient(90deg, transparent, rgba(0,0,0,0.12), transparent); }
+
+    .panel { display:flex; flex-direction:column; gap:8px }
+
+    /* left column */
+    /* control panel: labels above inputs */
+    #controlPanel .field-row{ display:flex; flex-direction:column; align-items:flex-start; gap:6px }
+    label { color:var(--muted); font-size:13px }
+
+    /* inputs are stacked; cleaned duplicate rules removed */
+    input[type="text"], input[type="number"], select { padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px; width:140px; }
+    button { background:var(--accent); color:white; border:0; padding:8px 12px; border-radius:6px; cursor:pointer }
+    button.secondary{ background:#e5e7eb; color:#111 }
+
+    /* usecases */
+    #usecaseList{ display:flex; flex-direction:column; gap:6px; }
+    .usecase{ display:flex; justify-content:space-between; align-items:center; padding:8px; background:#fbfdff; border-radius:6px; border:1px solid #f1f5f9 }
+    .usecase .state.supported{ color:var(--success); font-weight:600 }
+    .usecase .state.unsupported{ color:var(--muted) }
+
+    /* right column */
+    /* parsed traces: show about 10 items and make the list scrollable */
+    #parsedTracesList{ list-style:none; padding:0; margin:0; overflow:auto; display:flex; flex-direction:column; gap:6px; max-height:420px; }
+    #parsedTracesList li{ padding:10px; border-bottom:1px solid #eef2ff; display:flex; gap:8px; align-items:center; cursor:pointer }
+    .trace-meta { display:flex; gap:10px; align-items:center; font-size:13px; color:#111 }
+    .trace-ts { color:var(--muted); width:150px }
+    .dir-recv{ color:var(--accent); font-weight:700 }
+    .dir-send{ color:purple; font-weight:700 }
+
+    /* entities tree */
+    #entitiesPanel { margin-bottom: 10px; }
+    #entitiesList { list-style:none; padding:0; margin:0; border:1px solid #eef2ff; border-radius:6px }
+    #entitiesList li { padding:8px; border-bottom:1px solid #f1f5f9; cursor:pointer }
+    #entitiesList li .sub { margin-left:12px; font-size:13px; color:#333 }
+    .tree-toggle { display:inline-block; width:18px; text-align:center; color:var(--muted) }
+    .entity-addr { font-weight:600 }
+
+    /* detail panel */
+    #traceDetailPanel{ position:relative; margin-top:8px; }
+    #traceDetail{ display:none; white-space:pre-wrap; background:#0b1220; color:#dbeafe; padding:12px; border-radius:6px; overflow:auto; flex:1; }
+    #traceDetail.header{ display:flex; }
+    #traceDetailClose{ position:absolute; right:8px; top:8px; background:transparent; border:0; color:#fff; cursor:pointer }
+
+    /* logs bottom */
+    footer .card{ padding:8px }
+    #logs{ white-space:pre-wrap; background:var(--code-bg); color:var(--code-color); padding:10px; height:180px; overflow:auto; border-radius:6px }
+
+    /* responsive */
+    @media (max-width:900px){ .top{ grid-template-columns: 1fr; } #parsedTracesList{ max-height:200px } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>EEBUS Device Tester</h1>
+      <div style="color:var(--muted);font-size:13px">Local web UI</div>
+    </header>
+
+    <div class="top">
+      <div class="card panel" id="leftColumn" style="width:260px; min-width:160px; max-width:680px; box-sizing:border-box; flex-shrink:0;">
+        <section id="controlPanel" class="card" style="padding:12px">
+          <h3 style="margin:0 0 6px 0">Control</h3>
+          <form id="writeForm" class="panel" onsubmit="return false;">
+            <div class="field-row">
+              <label for="cmdSelect">Command</label>
+              <select id="cmdSelect" name="cmd">
+                <option value="lpc">Write LPC Consumption Limit</option>
+                <option value="failsafe">Write LPC Failsafe</option>
+              </select>
+            </div>
+            <div id="lpcFields" class="panel">
+              <div class="field-row"><label for="duration">Duration (ms)</label><input name="duration" id="duration" type="number" value="10000" /></div>
+              <div class="field-row"><label for="value">Value (W)</label><input name="value" id="value" type="number" value="2025" /></div>
+            </div>
+            <div id="failsafeFields" class="panel" style="display:none;">
+              <div class="field-row"><label for="minDurationMs">Min Duration (ms)</label><input name="minDurationMs" id="minDurationMs" type="number" value="1000" /></div>
+              <div class="field-row"><label for="failsafePowerLimit">Failsafe Power (W)</label><input name="failsafePowerLimit" id="failsafePowerLimit" type="number" value="500" /></div>
+            </div>
+            <div style="display:flex; gap:8px; margin-top:6px">
+              <button id="sendBtn">Send</button>
+              <button id="clearParsed" class="secondary" type="button">Clear Parsed</button>
+            </div>
+          </form>
+        </section>
+
+        <section id="usecases" class="card" style="margin-top:12px; padding:12px">
+          <h3 style="margin:0 0 6px 0">Usecases</h3>
+          <div id="usecasesStatus" style="color:var(--muted);font-size:13px">Loading usecases...</div>
+          <div id="usecaseList" style="margin-top:8px"></div>
+        </section>
+
+        <!-- Entities panel moved to left column under Usecases -->
+        <section id="entitiesLeft" class="card" style="margin-top:12px; padding:12px">
+          <h3 style="margin:0 0 6px 0">Entities</h3>
+          <div id="entitiesStatus" style="color:var(--muted); font-size:13px; margin-bottom:6px">Loading entities...</div>
+          <ul id="entitiesList"></ul>
+        </section>
+      </div>
+
+      <div id="splitter" class="splitter" title="Drag to resize"></div>
+      <div class="card panel" id="parsedPanel" style="padding:12px; flex:1; min-width:200px;">
+        <h3 style="margin:0 0 6px 0">Parsed Traces</h3>
+        <div id="parsedTracesStatus" style="color:var(--muted); font-size:13px">Waiting for traces...</div>
+
+        <ul id="parsedTracesList"></ul>
+
+         <div id="traceDetailPanel">
+          <div style="display:flex; align-items:center; gap:8px; justify-content:space-between;">
+            <label style="font-size:13px;color:var(--muted);"><input id="eebusJsonCheckbox" type="checkbox" checked style="margin-right:6px;">EEBUS Json Format</label>
+            <button id="traceDetailClose" title="Close detail" style="display:none">✖</button>
+          </div>
+          <div id="traceDetail">Klicke einen Eintrag, um das vollständige JSON zu sehen.</div>
+         </div>
+       </div>
+     </div>
+
+    <footer>
+      <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <h3 style="margin:0 0 6px 0">Trace Log</h3>
+          <button id="logsToBottomBtn" style="display:none; background:#2563eb; color:#fff; border:0; padding:6px 10px; border-radius:6px; cursor:pointer">Scroll to bottom</button>
+        </div>
+        <div id="logs">Connecting to log websocket...</div>
+      </div>
+    </footer>
+  </div>
+
+<script>
+// --- UI helpers ---
+function showFieldsFor(cmd){
+  document.getElementById('lpcFields').style.display = (cmd === 'lpc') ? 'block' : 'none';
+  document.getElementById('failsafeFields').style.display = (cmd === 'failsafe') ? 'block' : 'none';
+}
+
+document.getElementById('cmdSelect').addEventListener('change', function(e){ showFieldsFor(e.target.value); });
+showFieldsFor(document.getElementById('cmdSelect').value);
+
+// Usecases
+function renderUsecases(list){
+  const container = document.getElementById('usecaseList'); container.innerHTML = '';
+  if(!list || list.length === 0){ document.getElementById('usecasesStatus').textContent = 'No usecases available'; return; }
+  document.getElementById('usecasesStatus').textContent = '';
+  list.forEach(u => { setUsecase(u.name, u.supported); });
+}
+async function loadUsecases(){
+  try{
+    const res = await fetch('/api/usecases'); if(!res.ok){ document.getElementById('usecasesStatus').textContent = 'Failed to load usecases'; return; }
+    const list = await res.json(); renderUsecases(list);
+  }catch(err){ document.getElementById('usecasesStatus').textContent = 'Error loading usecases: ' + err; }
+}
+
+function safeId(name){
+  const n = String(name || '').trim().toLowerCase();
+  return 'uc-' + n.replace(/[^a-z0-9_-]/g, '_');
+}
+
+function setUsecase(name, supported){
+   const container = document.getElementById('usecaseList');
+   const id = safeId(name);
+   // remove any existing elements with same id or same title (defensive)
+   const existing = document.getElementById(id);
+   if(existing){
+     const span = existing.querySelector('.state');
+     if(span){
+       span.textContent = supported ? 'supported' : 'unsupported';
+       span.className = 'state ' + (supported ? 'supported' : 'unsupported');
+     }
+     return;
+   }
+   Array.from(container.querySelectorAll('[id^="uc-"]')).forEach(c => {
+     if(c.firstChild && String(c.firstChild.textContent || '').trim() === String(name || '').trim()){ c.remove(); }
+   });
+   // create new
+   const div = document.createElement('div'); div.className = 'usecase'; div.id = id;
+   const title = document.createElement('div'); title.textContent = name;
+   const state = document.createElement('div'); state.className = 'state ' + (supported ? 'supported' : 'unsupported'); state.textContent = supported ? 'supported' : 'unsupported';
+   div.appendChild(title); div.appendChild(state); container.appendChild(div);
+}
+
+// --- Parsed trace handling helpers ---
+function extractTimestamp(line){ const ts = (typeof line === 'string') ? line.slice(0,19) : ''; if(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ts)) return ts; return '' }
+function extractDirection(line){ if(typeof line !== 'string') return ''; const m = line.match(/TRACE\s*(Recv|Send)/i) || line.match(/Trace\s*(Recv|Send)/i); return m ? m[1].toLowerCase() : '' }
+function extractJsonString(line){ if(typeof line !== 'string') return null; const idx = line.indexOf('{'); if(idx === -1) return null; return line.slice(idx) }
+function safeHasOwn(obj,key){ return Object.prototype.hasOwnProperty.call(obj,key) }
+function findValueByKey(obj, key){ if(!obj || typeof obj !== 'object') return undefined; if(safeHasOwn(obj,key)) return obj[key]; for(const k in obj){ if(!safeHasOwn(obj,k)) continue; const v = obj[k]; if(typeof v === 'object'){ const found = findValueByKey(v,key); if(found !== undefined) return found } } return undefined }
+function findCmdType(obj){ const cmd = findValueByKey(obj,'cmd'); if(!cmd) return ''; function findObjInArray(a){ if(!Array.isArray(a)) return null; for(const item of a){ if(!item) continue; if(typeof item === 'object' && !Array.isArray(item)){ for(const k in item){ if(Object.prototype.hasOwnProperty.call(item,k)) return k } } if(Array.isArray(item)){ const deeper = findObjInArray(item); if(deeper) return deeper } } return null } const t = findObjInArray(cmd); return t || '' }
+
+// parsed traces store
+const parsedTraces = []; let parsedIdCounter = 1;
+function addParsedTrace(entry){ entry.id = parsedIdCounter++; parsedTraces.unshift(entry); if(parsedTraces.length > 500) parsedTraces.pop(); renderParsedTraces(); }
+function clearParsedTraces(){ parsedTraces.length = 0; renderParsedTraces(); document.getElementById('traceDetail').textContent = 'Klicke einen Eintrag, um das vollständige JSON zu sehen.'; document.getElementById('traceDetail').style.display = 'none'; document.getElementById('traceDetailClose').style.display = 'none'; }
+
+function renderParsedTraces(){ const list = document.getElementById('parsedTracesList'); list.innerHTML = ''; if(parsedTraces.length === 0){ document.getElementById('parsedTracesStatus').textContent = 'Waiting for traces...'; return } document.getElementById('parsedTracesStatus').textContent = ''; parsedTraces.forEach(pt => {
+  const li = document.createElement('li'); li.id = 'pt-' + pt.id;
+  const ts = document.createElement('div'); ts.className = 'trace-ts'; ts.textContent = pt.ts || '';
+  const dir = document.createElement('div'); dir.className = (pt.direction === 'recv' ? 'dir-recv' : 'dir-send'); dir.textContent = (pt.direction || '').toUpperCase();
+  const meta = document.createElement('div'); meta.className = 'trace-meta'; meta.innerHTML = '<span style="color:var(--muted)">cmdClassifier:</span> ' + (pt.cmdClassifier || '-') + ' &nbsp; <span style="color:var(--muted)">type:</span> ' + (pt.cmdType || '-');
+  li.appendChild(ts); li.appendChild(dir); li.appendChild(meta);
+  li.addEventListener('click', () => showTraceDetail(pt)); list.appendChild(li);
+}) }
+
+/* --- Entities rendering (cascading list) --- */
+// remember expanded state across renders: key = entityAddress + '::' + featureIndex
+const expandedStates = {};
+function renderEntities(data){
+  const container = document.getElementById('entitiesList');
+  // preserve scroll position
+  const prevScroll = container ? container.scrollTop : 0;
+  container.innerHTML = '';
+  if(!data || data.length === 0){
+    document.getElementById('entitiesStatus').textContent = 'No entities available';
+    return;
+  }
+  document.getElementById('entitiesStatus').textContent = '';
+  data.forEach((ent, entIndex) => {
+    const li = document.createElement('li');
+    const entKey = String(ent.address || '') || ('ent-' + entIndex);
+    const toggle = document.createElement('span'); toggle.className = 'tree-toggle'; toggle.textContent = '+';
+    const title = document.createElement('span'); title.className = 'entity-addr'; title.textContent = (ent.address || '') + ' ';
+    const etype = document.createElement('span'); etype.style.color = 'var(--muted)'; etype.style.fontSize='13px'; etype.textContent = (ent.entityType ? ('['+ent.entityType+']') : '');
+    li.appendChild(toggle); li.appendChild(title); li.appendChild(etype);
+
+    const sub = document.createElement('div'); sub.className = 'sub'; sub.style.display = 'none';
+    // features
+    if(Array.isArray(ent.features)){
+      ent.features.forEach((f, featIndex) => {
+        const fdiv = document.createElement('div');
+        const fname = document.createElement('div'); fname.style.fontWeight='600'; fname.textContent = (f.name || '');
+        const froles = document.createElement('div'); froles.style.color='var(--muted)'; froles.textContent = 'Roles: ' + (f.roles || '');
+        fdiv.appendChild(fname); fdiv.appendChild(froles);
+        // operations
+        if(Array.isArray(f.operations) && f.operations.length>0){
+          const opl = document.createElement('ul'); opl.style.margin='6px 0 8px 12px'; opl.style.padding='0 0 0 14px'; opl.style.listStyle='disc';
+          f.operations.forEach(op => {
+            const oli = document.createElement('li');
+            const opKey = (op.op !== undefined && op.op !== null) ? String(op.op) : '';
+            const opName = (op.name !== undefined && op.name !== null) ? String(op.name) : '';
+            if(opKey && opName){ oli.textContent = opKey + ' — ' + opName; }
+            else if(opName){ oli.textContent = opName; }
+            else { oli.textContent = opKey; }
+            opl.appendChild(oli);
+          });
+          fdiv.appendChild(opl);
+        }
+        // restore expanded state for this feature
+        const featKey = entKey + '::' + String(featIndex);
+        if(expandedStates[featKey]){
+          fdiv.style.display = 'block';
+        }
+        sub.appendChild(fdiv);
+      });
+    }
+    li.appendChild(sub);
+    // restore toggled state if any feature is expanded
+    const anyExpanded = Object.keys(expandedStates).some(k => k.startsWith(entKey + '::'));
+    if(anyExpanded){ sub.style.display = 'block'; toggle.textContent = '−'; }
+
+    toggle.addEventListener('click', (e)=>{
+      const isOpen = sub.style.display !== 'none';
+      if(isOpen){
+        sub.style.display = 'none'; toggle.textContent = '+';
+        // clear expanded flags for this entity
+        Object.keys(expandedStates).forEach(k => { if(k.startsWith(entKey + '::')) delete expandedStates[k]; });
+      } else {
+        sub.style.display = 'block'; toggle.textContent = '−';
+        // mark all child features as expanded
+        const featCount = (Array.isArray(ent.features) ? ent.features.length : 0);
+        for(let i=0;i<featCount;i++){ expandedStates[entKey + '::' + i] = true; }
+      }
+    });
+    // clicking title toggles as well
+    title.addEventListener('click', ()=>{ toggle.click(); });
+    container.appendChild(li);
+  });
+  // restore scroll position
+  try{ container.scrollTop = prevScroll; }catch(e){}
+}
+
+// load entities from API (initial)
+async function loadEntities(){
+  try{
+    const res = await fetch('/api/entities');
+    if(!res.ok){ document.getElementById('entitiesStatus').textContent = 'Failed to load entities'; return; }
+    const data = await res.json();
+    // server may respond with array or with {type:..., entities: [...]}
+    let arr = [];
+    if(Array.isArray(data)) arr = data;
+    else if(data && Array.isArray(data.entities)) arr = data.entities;
+    renderEntities(arr);
+  }catch(e){ document.getElementById('entitiesStatus').textContent = 'Error loading entities: '+e }
+}
+
+// --- Trace detail helpers ---
+function eebusJsonToJson(jsonStr){
+  if(typeof jsonStr !== 'string' ) jsonStr = String(jsonStr || '');
+  try{
+    let s = jsonStr;
+    // Apply the simple transformations from the C++ routine
+    s = s.replace(/\[\]/g, '{}');
+    s = s.replace(/\}\]/g, '}');
+    s = s.replace(/\},\{/g, ',');
+    s = s.replace(/\[\{/g, '{');
+    s = s.trim();
+
+    // Try to parse the transformed string; if successful, pretty-print
+    try{
+      const parsed = JSON.parse(s);
+      return JSON.stringify(parsed, null, 2);
+    }catch(_){
+      // Fallback: simple pretty printer for single-line JSON-like strings
+      return simplePretty(s);
+    }
+  }catch(e){
+    return jsonStr;
+  }
+}
+
+function simplePretty(s){
+  // Basic character-wise pretty printer that inserts newlines and indentation
+  let out = '';
+  let indent = 0;
+  const indentStr = () => '  '.repeat(indent);
+  for(let i=0;i<s.length;i++){
+    const ch = s[i];
+    if(ch === '{' || ch === '['){
+      out += ch + '\n';
+      indent++;
+      out += indentStr();
+    } else if(ch === '}' || ch === ']'){
+      out += '\n';
+      indent = Math.max(0, indent-1);
+      out += indentStr() + ch;
+    } else if(ch === ','){
+      out += ch + '\n' + indentStr();
+    } else {
+      out += ch;
+    }
+  }
+  return out;
+}
+
+let lastShownPT = null;
+function showTraceDetail(pt){
+  lastShownPT = pt;
+  const detail = document.getElementById('traceDetail');
+  try{
+    const isRaw = document.getElementById('eebusJsonCheckbox') && document.getElementById('eebusJsonCheckbox').checked;
+    let text = '';
+    if(pt.rawJson){
+      // rawJson is an object; convert to string then optionally filter
+      const s = JSON.stringify(pt.rawJson);
+      text = isRaw ? JSON.stringify(pt.rawJson, null, 2) : eebusJsonToJson(s);
+    } else {
+      text = pt.rawLine || '';
+    }
+    detail.textContent = text;
+  }catch(e){ detail.textContent = pt.rawLine || '' }
+  detail.style.display = 'block';
+  document.getElementById('traceDetailClose').style.display = 'inline-block';
+  detail.scrollTop = 0;
+}
+
+// Update displayed detail when checkbox changes
+const eebusCheckbox = document.getElementById('eebusJsonCheckbox');
+if(eebusCheckbox){
+  eebusCheckbox.addEventListener('change', () => { if(lastShownPT) showTraceDetail(lastShownPT); });
+}
+
+document.getElementById('traceDetailClose').addEventListener('click', function(){ document.getElementById('traceDetail').style.display = 'none'; this.style.display = 'none'; });
+
+const clearParsedBtn = document.getElementById('clearParsed');
+if(clearParsedBtn){ clearParsedBtn.addEventListener('click', clearParsedTraces); }
+
+// WebSocket for logs and usecase updates
+(function(){
+    const logsEl = document.getElementById('logs');
+    const logsBtn = document.getElementById('logsToBottomBtn');
+    const protocol = (location.protocol === 'https:') ? 'wss:' : 'ws:';
+    const wsUrl = protocol + '//' + location.host + '/ws/logs';
+    let ws;
+    // auto-scroll state: true means keep scrolling to newest messages
+    let logsAutoScroll = true;
+
+    function updateLogsButton(){ if(!logsBtn) return; logsBtn.style.display = logsAutoScroll ? 'none' : 'inline-block'; }
+
+    // clicking the button forces scroll to bottom and re-enables auto-scroll
+    if(logsBtn){ logsBtn.addEventListener('click', () => { logsAutoScroll = true; try{ logsEl.scrollTop = logsEl.scrollHeight; }catch(e){} updateLogsButton(); }); }
+
+    // detect user scroll - if user scrolls up, disable auto-scroll; if they scroll to bottom, enable it
+    if(logsEl){
+      logsEl.addEventListener('scroll', () => {
+        const atBottom = (logsEl.scrollHeight - logsEl.scrollTop - logsEl.clientHeight) <= 8;
+        logsAutoScroll = atBottom;
+        updateLogsButton();
+      });
+    }
+
+    function connect(){
+      ws = new WebSocket(wsUrl);
+      ws.addEventListener('open', () => { if(logsEl) logsEl.textContent = '' });
+      ws.addEventListener('message', (ev) => {
+        const line = (typeof ev.data === 'string') ? ev.data : JSON.stringify(ev.data);
+        // First try: is this a structured usecase JSON message we previously used?
+        let parsed = null; try{ parsed = JSON.parse(line) }catch(e){ parsed = null }
+        if(parsed && parsed.type === 'usecase'){ const name = parsed.name; const supported = !!parsed.supported; setUsecase(name, supported); return; }
+        if(parsed && parsed.type === 'entities'){ const arr = parsed.entities || []; renderEntities(arr); return; }
+
+        // Detect TRACE Send/Recv lines and try to parse JSON inside them
+        const isTrace = (typeof line === 'string') && (/TRACE\s*(Recv|Send)/i.test(line) || /Trace\s*(Recv|Send)/i.test(line));
+        if(isTrace){ const ts = extractTimestamp(line); const direction = extractDirection(line); const js = extractJsonString(line); if(js){ try{ const obj = JSON.parse(js); const cmdClassifier = findValueByKey(obj,'cmdClassifier') || ''; const cmdType = findCmdType(obj) || ''; addParsedTrace({ ts: ts, direction: direction, cmdClassifier: cmdClassifier, cmdType: cmdType, rawJson: obj, rawLine: line }); return }catch(e){ /* fallthrough to log */ } } }
+
+        // fallback: treat as plain log line
+        if(logsEl){ if(logsEl.textContent && logsEl.textContent.length>0){ logsEl.textContent += '\n' + line } else { logsEl.textContent = line } }
+        // only auto-scroll when enabled
+        if(logsAutoScroll && logsEl){ try{ logsEl.scrollTop = logsEl.scrollHeight; }catch(e){} }
+      });
+      ws.addEventListener('close', () => { setTimeout(connect, 1000) });
+      ws.addEventListener('error', (e) => { console.error('ws error', e); try{ ws.close() }catch(_){} });
+    }
+    connect();
+  })();
+
+// Build payload depending on command
+function buildPayload() { const cmd = document.getElementById('cmdSelect').value; if (cmd === 'lpc') { const duration = parseInt(document.getElementById('duration').value, 10) || 0; const value = parseFloat(document.getElementById('value').value) || 0; return { cmd: 'lpc', duration: duration, value: value } } if (cmd === 'failsafe'){ const minDurationMs = parseInt(document.getElementById('minDurationMs').value, 10) || 0; const failsafePowerLimit = parseFloat(document.getElementById('failsafePowerLimit').value) || 0; return { cmd: 'failsafe', minDurationMs: minDurationMs, failsafePowerLimit: failsafePowerLimit } } return { cmd } }
+
+document.getElementById('sendBtn').addEventListener('click', async function(e){ e.preventDefault(); const payload = buildPayload(); try{ const res = await fetch('/api/write', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); const txt = await res.text(); if(!res.ok){ alert('Write failed: '+txt) } else { alert('Write triggered: '+txt) } }catch(err){ alert('Request failed: '+err) } });
+
+// load initial usecases on page load
+loadUsecases();
+loadEntities();
+
+// Splitter resize logic
+;(function(){
+  const splitter = document.getElementById('splitter');
+  const left = document.getElementById('leftColumn');
+  if(!splitter || !left) return;
+  let isDragging = false;
+  let startX = 0;
+  let startWidth = 0;
+  const minW = 160; const maxW = 680;
+  // restore stored width
+  try{ const w = localStorage.getItem('leftWidth'); if(w){ left.style.width = w + 'px'; } }catch(e){}
+
+  splitter.addEventListener('pointerdown', function(e){
+    isDragging = true; startX = e.clientX; startWidth = left.getBoundingClientRect().width; splitter.setPointerCapture(e.pointerId);
+    document.body.style.userSelect = 'none'; document.body.style.cursor = 'col-resize';
+  });
+  document.addEventListener('pointermove', function(e){
+    if(!isDragging) return; const dx = e.clientX - startX; let nw = Math.round(startWidth + dx); if(nw < minW) nw = minW; if(nw > maxW) nw = maxW; left.style.width = nw + 'px';
+  });
+  function endDrag(e){ if(!isDragging) return; isDragging = false; try{ localStorage.setItem('leftWidth', String(left.getBoundingClientRect().width)); }catch(_){} document.body.style.userSelect=''; document.body.style.cursor=''; }
+  document.addEventListener('pointerup', endDrag);
+  document.addEventListener('pointercancel', endDrag);
+})();
+</script>
+</body>
+</html>
