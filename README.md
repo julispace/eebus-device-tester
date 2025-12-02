@@ -1,7 +1,7 @@
-# Device Tester (EEBUS / HEMS)
+# Device Tester (EEBUS)
 
-This app is a simple EEBUS/HEMS device tester written in Go using the [eebus-go library](https://github.com/enbility/eebus-go). It can be used to test EEBUS implementations by simulating a device that connects to a EEBUS device:
-- Starts a local EEBUS/HEMS service and optional remote connection by SKI.
+This app is a simple EEBUS device tester written in Go using the [eebus-go library](https://github.com/enbility/eebus-go). It can be used to test EEBUS implementations by simulating a device that connects to a EEBUS device:
+- Starts a local EEBUS service and connects to a remote device using SHIP and SPINE
 - Serves a web UI (WebSocket + REST) showing logs, sent/received SPINE messages, usecases and discovered entities.
 - Provides basic REST APIs to trigger write operations (e.g. LPC limits). Not all write operations are Supported
 
