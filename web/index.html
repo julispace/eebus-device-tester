@@ -312,10 +312,11 @@
                 <h3 style="margin:0 0 6px 0">Data and Control</h3>
 
                 <div style="display:flex;flex-direction:column;gap:8px">
+                    <!-- LPC-->
                     <div style="font-weight:600">LPC</div>
                     <div id="lpcDisable" style="color:var(--muted);font-weight:600; display:flex;">not supported</div>
                     <div id="lpcDisplay" style="display:none;flex-direction:column;">
-                        <h6>Scenario 1 - Control active power consumption</h6>
+                        <h5>Scenario 1 - Control active power consumption</h5>
                         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                             <div style="min-width:110px">
                                 <div style="font-size:12px;color:var(--muted)">Limit (W)</div>
@@ -341,21 +342,17 @@
                                 Active</label>
                             <button id="sendWriteLimit">Send Loadcontrol Limit</button>
                         </div>
-
-                        <h6>Scenario 2 - Failsafe</h6>
-                        <!-- Failsafe display (restored) -->
+                        <h5>Scenario 2 - Failsafe</h5>
                         <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
                             <div style="min-width:110px">
                                 <div style="font-size:12px;color:var(--muted)">Failsafe Power (W)</div>
-                                <div id="failsafePower" style="font-weight:600">-</div>
+                                <div id="lpcFailsafePower" style="font-weight:600">-</div>
                             </div>
                             <div style="min-width:110px">
                                 <div style="font-size:12px;color:var(--muted)">Failsafe Duration (min)</div>
-                                <div id="failsafeDuration" style="font-weight:600">-</div>
+                                <div id="lpcFailsafeDuration" style="font-weight:600">-</div>
                             </div>
                         </div>
-
-                        <!-- Failsafe send controls (restored) -->
                         <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
                             <input id="writeFailsafePower" type="number" placeholder="failsafe power (W)"
                                    style="width:120px" value="2500"/>
@@ -366,8 +363,8 @@
                         </div>
                     </div>
 
-                    <div style="height:1px;background:#eef2ff;margin:6px 0"></div>
-
+                    <div style="height:1px;background:grey;margin:6px 0"></div>
+                    <!-- LPP-->
                     <div style="font-weight:600">LPP</div>
                     <div id="lppDisable" style="color:var(--muted);font-weight:600; display:flex;">not supported</div>
                     <div id="lppDisplay" style="display:none;gap:8px;flex-wrap:wrap;align-items:center">
@@ -390,6 +387,76 @@
                         <div style="min-width:80px">
                             <div style="font-size:12px;color:var(--muted)">Active</div>
                             <div id="lppLimitActive" style="font-weight:600">-</div>
+                        </div>
+                    </div>
+                    <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                    <!-- EVSECC-->
+                    <div style="font-weight:600">EVSECC</div>
+                    <div id="evseccDisable" style="color:var(--muted);font-weight:600; display:flex;">not supported
+                    </div>
+                    <div id="evseccDisplay" style="display:none;gap:8px;flex-wrap:wrap;align-items:center">
+                        <h5>Scenario 1 - EVSE sends manufacturer info</h5>
+                        <div style="display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap; margin-top:8px;">
+                            <div style="min-width:110px">
+                                <div style="font-size:12px;color:var(--muted)">Device Name</div>
+                                <div id="evseccDeviceName" style="font-weight:600">-</div>
+                            </div>
+                            <div style="min-width:110px">
+                                <div style="font-size:12px;color:var(--muted)">Device Code</div>
+                                <div id="evseccDevicecode" style="font-weight:600">-</div>
+                            </div>
+                            <div style="min-width:110px">
+                                <div style="font-size:12px;color:var(--muted)">Serial Number</div>
+                                <div id="evseccSerialNumber" style="font-weight:600">-</div>
+                            </div>
+                            <div style="min-width:110px">
+                                <div style="font-size:12px;color:var(--muted)">Software Revision</div>
+                                <div id="evseccSoftwareRevision" style="font-weight:600">-</div>
+                            </div>
+                            <div style="min-width:80px">
+                                <div style="font-size:12px;color:var(--muted)">Hardware Revision</div>
+                                <div id="evseccHardwareRevision" style="font-weight:600">-</div>
+                            </div>
+                            <div style="min-width:80px">
+                                <div style="font-size:12px;color:var(--muted)">Vendor Name</div>
+                                <div id="evseccVendorName" style="font-weight:600">-</div>
+                            </div>
+                            <div style="min-width:80px">
+                                <div style="font-size:12px;color:var(--muted)">Vendor Code</div>
+                                <div id="evseccVendorCode" style="font-weight:600">-</div>
+                            </div>
+                            <div style="min-width:80px">
+                                <div style="font-size:12px;color:var(--muted)">Brand Name</div>
+                                <div id="evseccBrandName" style="font-weight:600">-</div>
+                            </div>
+                            <div style="min-width:80px">
+                                <div style="font-size:12px;color:var(--muted)">Power Source</div>
+                                <div id="evseccPowerSource" style="font-weight:600">-</div>
+                            </div>
+                            <div style="min-width:80px">
+                                <div style="font-size:12px;color:var(--muted)">Manufacturer Node ID</div>
+                                <div id="evseccManufacturerNodeId" style="font-weight:600">-</div>
+                            </div>
+                            <div style="min-width:80px">
+                                <div style="font-size:12px;color:var(--muted)">Manufacturer Label</div>
+                                <div id="evseccManufacturerLabel" style="font-weight:600">-</div>
+                            </div>
+                            <div style="min-width:80px">
+                                <div style="font-size:12px;color:var(--muted)">Manufacturer Description</div>
+                                <div id="evseccManufacturerDescription" style="font-weight:600">-</div>
+                            </div>
+                        </div>
+                        <h5>Scenario 2 - EVSE sends error state</h5>
+                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                            <div style="min-width:110px">
+                                <div style="font-size:12px;color:var(--muted)">Operating State</div>
+                                <div id="evseccOperatingState" style="font-weight:600">-</div>
+                            </div>
+                            <div style="min-width:110px">
+                                <div style="font-size:12px;color:var(--muted)">Error Message</div>
+                                <div id="evseccErrorMessage" style="font-weight:600">-</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1202,6 +1269,21 @@
         }
     }
 
+    let evseccSupported = false;
+
+    function updateEVSECCDisplay(supported) {
+        evseccSupported = supported;
+        const container = document.getElementById('evseccDisplay');
+        const disabledContainer = document.getElementById('evseccDisable');
+        if (supported) {
+            container.style.display = 'flex';
+            disabledContainer.style.display = 'none';
+        } else {
+            container.style.display = 'none';
+            disabledContainer.style.display = 'flex';
+        }
+    }
+
     // ensure setUsecase notifies LPP state changes
     const originalSetUsecase = setUsecase;
     setUsecase = function (name, supported) {
@@ -1211,6 +1293,9 @@
                 updateLPPDisplay(supported);
             } else if (String(name || '').trim().toLowerCase() === 'lpc') {
                 updateLPCDisplay(supported);
+            }
+            else if (String(name || '').trim().toLowerCase() === 'evsecc') {
+                updateEVSECCDisplay(supported);
             }
         } catch (e) {
         }
@@ -1229,22 +1314,43 @@
             const d = await res.json();
 
             const setText = (id, v) => {
+                console.log('Updating %s to %s', id, v);
                 const el = document.getElementById(id);
                 if (el) el.textContent = (v !== undefined ? v : '-');
             };
             // update LPC
-            setText('lpcLimitValue', d.lpcLimitValue);
-            setText('lpcLimitDur', d.lpcLimitDur);
-            setText('lpcLimitActive', d.lpcLimitActive);
-            setText('failsafePower', d.lpcFailsafePower);
-            setText('failsafeDuration', d.lpcFailsafeDurationMin);
-            // update LPP explicit fields only when supported
-            setText('lppFailsafeValue', d.lppFailsafeValue);
-            setText('lppFailsafeDur', d.lppFailsafeDurationSec);
-            setText('lppLimitValue', d.lppLimitValue);
-            setText('lppLimitDur', d.lppLimitDurationSec);
-            setText('lppLimitActive', (d.lppLimitActive !== undefined) ? (d.lppLimitActive ? 'yes' : 'no') : '-');
+            if (lpcSupported) {
+                setText('lpcLimitValue', d.lpcLimitValue);
+                setText('lpcLimitDur', d.lpcLimitDurSeconds);
+                setText('lpcLimitActive', d.lpcLimitActive);
+                setText('lpcFailsafePower', d.lpcFailsafePower);
+                setText('lpcFailsafeDuration', d.lpcFailsafeDurMinutes);
+            }
+            if (lppSupported) {
+                // update LPP explicit fields only when supported
+                setText('lppFailsafeValue', d.lppFailsafeValue);
+                setText('lppFailsafeDur', d.lppFailsafeDurMinutes);
+                setText('lppLimitValue', d.lppLimitValue);
+                setText('lppLimitDur', d.lppLimitDurationSeconds);
+                setText('lppLimitActive', (d.lppLimitActive !== undefined) ? (d.lppLimitActive ? 'yes' : 'no') : '-');
+            }
+            if(evseccSupported) {
+                setText('evseccDeviceName', d.evseccDeviceName);
+                setText('evseccDevicecode', d.evseccDeviceCode);
+                setText('evseccSerialNumber', d.evseccSerialNumber);
+                setText('evseccSoftwareRevision', d.evseccSoftwareRevision);
+                setText('evseccHardwareRevision', d.evseccHardwareRevision);
+                setText('evseccVendorName', d.evseccVendorName);
+                setText('evseccVendorCode', d.evseccVendorCode);
+                setText('evseccBrandName', d.evseccBrandName);
+                setText('evseccPowerSource', d.evseccPowerSource);
+                setText('evseccManufacturerNodeId', d.evseccManufacturerNodeIdentification);
+                setText('evseccManufacturerLabel', d.evseccManufacturerLabel);
+                setText('evseccManufacturerDescription', d.evseccManufacturerDescription);
+                setText('evseccOperatingState', d.evseccOperatingState);
+                setText('evseccErrorMessage', d.evseccOperatingStateDescription);
 
+            }
         } catch (e) {
             // ignore
         }

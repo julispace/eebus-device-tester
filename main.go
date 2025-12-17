@@ -39,8 +39,8 @@ import (
 )
 
 var remoteSki string
-var enableDebugLogging = true
-var enableTraceLogging = true
+var enableDebugLogging = false
+var enableTraceLogging = false
 
 func writePEMFiles(certificate tls.Certificate, certPath, keyPath string) error {
 	// Certificate PEM
@@ -74,16 +74,16 @@ func writePEMFiles(certificate tls.Certificate, certPath, keyPath string) error 
 
 type usecaseData struct {
 	// LPC usecase data
-	LpcFailsafePower float64       `json:"lpcFailsafePower,omitempty"`
-	LpcFailsafeDur   time.Duration `json:"lpcFailsafeDur,omitempty"`
-	LpcLimitValue    float64       `json:"lpcLimitValue,omitempty"`
-	LpcLimitDur      time.Duration `json:"lpcLimitDur,omitempty"`
-	LpcLimitActive   bool          `json:"lpcLimitActive,omitempty"`
+	LpcFailsafePower   float64       `json:"lpcFailsafePower,omitempty"`
+	LpcFailsafeDur     time.Duration `json:"lpcFailsafeDurMinutes,omitempty"`
+	LpcLimitValue      float64       `json:"lpcLimitValue,omitempty"`
+	LpcLimitDurSeconds time.Duration `json:"lpcLimitDurSeconds,omitempty"`
+	LpcLimitActive     bool          `json:"lpcLimitActive,omitempty"`
 	// LPP usecase data
-	LppFailsafeDur   time.Duration `json:"lppFailsafeDur,omitempty"`
+	LppFailsafeDur   time.Duration `json:"lppFailsafeDurMinutes,omitempty"`
 	LppFailsafeValue float64       `json:"lppFailsafeValue,omitempty"`
 	LppLimitValue    float64       `json:"lppLimitValue,omitempty"`
-	LppLimitDuration time.Duration `json:"lppLimitDuration,omitempty"`
+	LppLimitDuration time.Duration `json:"lppLimitDurationSeconds,omitempty"`
 	LppLimitActive   bool          `json:"lppLimitActive,omitempty"`
 	// EVSECC usecase data
 	EvseccDeviceName                     string `json:"evseccDeviceName,omitempty"`
@@ -297,7 +297,7 @@ func (h *hems) HandleEgLPP(ski string, device spineapi.DeviceRemoteInterface, en
 			fmt.Println("Error getting ProductionNominalMax:", err)
 		} else {
 			h.usecaseData.LppLimitValue = limit.Value
-			h.usecaseData.LppLimitDuration = limit.Duration
+			h.usecaseData.LppLimitDuration = limit.Duration / time.Second
 			h.usecaseData.LppLimitActive = limit.IsActive
 		}
 	}
@@ -316,7 +316,7 @@ func (h *hems) HandleEgLPC(ski string, device spineapi.DeviceRemoteInterface, en
 			fmt.Println("Error getting ConsumptionNominalMax:", err)
 		} else {
 			h.usecaseData.LpcLimitActive = limit.IsActive
-			h.usecaseData.LpcLimitDur = limit.Duration
+			h.usecaseData.LpcLimitDurSeconds = limit.Duration / time.Second
 			h.usecaseData.LpcLimitValue = limit.Value
 		}
 	case eglpc.DataUpdateFailsafeDurationMinimum:
@@ -324,7 +324,7 @@ func (h *hems) HandleEgLPC(ski string, device spineapi.DeviceRemoteInterface, en
 		if err != nil {
 			fmt.Println("Error getting FailsafeDurationMinimum:", err)
 		} else {
-			h.usecaseData.LpcFailsafeDur = minDur
+			h.usecaseData.LpcFailsafeDur = minDur / time.Minute
 		}
 	case eglpc.DataUpdateFailsafeConsumptionActivePowerLimit:
 		powerLimit, err := h.uceglpc.FailsafeConsumptionActivePowerLimit(entity)
@@ -912,7 +912,7 @@ func (h *hems) startWebInterface() {
 				LPCFailsafePower:       h.usecaseData.LpcFailsafePower,
 				LPCFailsafeDurationMin: int64(h.usecaseData.LpcFailsafeDur / time.Minute),
 				LPCLimitValue:          h.usecaseData.LpcLimitValue,
-				LPCLimitDurationSec:    int64(h.usecaseData.LpcLimitDur / time.Second),
+				LPCLimitDurationSec:    int64(h.usecaseData.LpcLimitDurSeconds / time.Second),
 				LPCLimitActive:         h.usecaseData.LpcLimitActive,
 				LPPFailsafeValue:       h.usecaseData.LppFailsafeValue,
 				LPPFailsafeDurationSec: int64(h.usecaseData.LppFailsafeDur / time.Second),
