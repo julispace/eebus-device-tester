@@ -72,6 +72,36 @@ func writePEMFiles(certificate tls.Certificate, certPath, keyPath string) error 
 	return nil
 }
 
+type usecaseData struct {
+	// LPC usecase data
+	LpcFailsafePower float64       `json:"lpcFailsafePower,omitempty"`
+	LpcFailsafeDur   time.Duration `json:"lpcFailsafeDur,omitempty"`
+	LpcLimitValue    float64       `json:"lpcLimitValue,omitempty"`
+	LpcLimitDur      time.Duration `json:"lpcLimitDur,omitempty"`
+	LpcLimitActive   bool          `json:"lpcLimitActive,omitempty"`
+	// LPP usecase data
+	LppFailsafeDur   time.Duration `json:"lppFailsafeDur,omitempty"`
+	LppFailsafeValue float64       `json:"lppFailsafeValue,omitempty"`
+	LppLimitValue    float64       `json:"lppLimitValue,omitempty"`
+	LppLimitDuration time.Duration `json:"lppLimitDuration,omitempty"`
+	LppLimitActive   bool          `json:"lppLimitActive,omitempty"`
+	// EVSECC usecase data
+	EvseccDeviceName                     string `json:"evseccDeviceName,omitempty"`
+	EvseccDeviceCode                     string `json:"evseccDeviceCode,omitempty"`
+	EvseccSerialNumber                   string `json:"evseccSerialNumber,omitempty"`
+	EvseccSoftwareRevision               string `json:"evseccSoftwareRevision,omitempty"`
+	EvseccHardwareRevision               string `json:"evseccHardwareRevision,omitempty"`
+	EvseccVendorName                     string `json:"evseccVendorName,omitempty"`
+	EvseccVendorCode                     string `json:"evseccVendorCode,omitempty"`
+	EvseccBrandName                      string `json:"evseccBrandName,omitempty"`
+	EvseccPowerSource                    string `json:"evseccPowerSource,omitempty"`
+	EvseccManufacturerNodeIdentification string `json:"evseccManufacturerNodeIdentification,omitempty"`
+	EvseccManufacturerLabel              string `json:"evseccManufacturerLabel,omitempty"`
+	EvseccManufacturerDescription        string `json:"evseccManufacturerDescription,omitempty"`
+	EvseccOperatingState                 string `json:"evseccOperatingState,omitempty"`
+	EvseccOperatingStateDescription      string `json:"evseccOperatingStateDescription,omitempty"`
+}
+
 type hems struct {
 	myService *service.Service
 
@@ -101,6 +131,9 @@ type hems struct {
 
 	// last entities JSON payload (cached)
 	lastEntitiesJSON []byte
+
+	// usecase data
+	usecaseData usecaseData
 }
 
 func (h *hems) run() {
@@ -215,7 +248,6 @@ func (h *hems) run() {
 
 	// LPP
 	h.uceglpp = eglpp.NewLPP(localEntity, h.HandleEgLPP)
-	h.myService.AddUseCase(h.uceglpp)
 	h.setUsecaseSupported("LPP", false)
 
 	// MPC
@@ -242,14 +274,65 @@ func (h *hems) HandleEgLPP(ski string, device spineapi.DeviceRemoteInterface, en
 	if event == eglpp.UseCaseSupportUpdate {
 		h.setUsecaseSupported("LPP", true)
 	}
+	switch event {
+	case eglpp.UseCaseSupportUpdate:
+		h.setUsecaseSupported("LPP", true)
+	case eglpp.DataUpdateFailsafeDurationMinimum:
+		minDur, err := h.uceglpp.FailsafeDurationMinimum(entity)
+		if err != nil {
+			fmt.Println("Error getting FailsafeDurationMinimum:", err)
+		} else {
+			h.usecaseData.LppFailsafeDur = minDur
+		}
+	case eglpp.DataUpdateFailsafeProductionActivePowerLimit:
+		powerLimit, err := h.uceglpp.FailsafeProductionActivePowerLimit(entity)
+		if err != nil {
+			fmt.Println("Error getting FailsafeConsumptionActivePowerLimit:", err)
+		} else {
+			h.usecaseData.LppFailsafeValue = powerLimit
+		}
+	case eglpp.DataUpdateLimit:
+		limit, err := h.uceglpp.ProductionLimit(entity)
+		if err != nil {
+			fmt.Println("Error getting ProductionNominalMax:", err)
+		} else {
+			h.usecaseData.LppLimitValue = limit.Value
+			h.usecaseData.LppLimitDuration = limit.Duration
+			h.usecaseData.LppLimitActive = limit.IsActive
+		}
+	}
 	h.updateEntitiesFromDevice(device)
 }
 
 // HandleEgLPC Energy Guard LPC Handler
 func (h *hems) HandleEgLPC(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("EgLPC Event: ", event)
-	if event == eglpc.UseCaseSupportUpdate {
+	switch event {
+	case eglpc.UseCaseSupportUpdate:
 		h.setUsecaseSupported("LPC", true)
+	case eglpc.DataUpdateLimit:
+		limit, err := h.uceglpc.ConsumptionLimit(entity)
+		if err != nil {
+			fmt.Println("Error getting ConsumptionNominalMax:", err)
+		} else {
+			h.usecaseData.LpcLimitActive = limit.IsActive
+			h.usecaseData.LpcLimitDur = limit.Duration
+			h.usecaseData.LpcLimitValue = limit.Value
+		}
+	case eglpc.DataUpdateFailsafeDurationMinimum:
+		minDur, err := h.uceglpc.FailsafeDurationMinimum(entity)
+		if err != nil {
+			fmt.Println("Error getting FailsafeDurationMinimum:", err)
+		} else {
+			h.usecaseData.LpcFailsafeDur = minDur
+		}
+	case eglpc.DataUpdateFailsafeConsumptionActivePowerLimit:
+		powerLimit, err := h.uceglpc.FailsafeConsumptionActivePowerLimit(entity)
+		if err != nil {
+			fmt.Println("Error getting FailsafeConsumptionActivePowerLimit:", err)
+		} else {
+			h.usecaseData.LpcFailsafePower = powerLimit
+		}
 	}
 	h.updateEntitiesFromDevice(device)
 }
@@ -275,6 +358,36 @@ func (h *hems) HandleEgEvcem(ski string, device spineapi.DeviceRemoteInterface, 
 // HandleEgEvsecc Energy Guard EVSECC Handler
 func (h *hems) HandleEgEvsecc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("EgEVSECC Event: ", event)
+	switch event {
+	case cemevsecc.UseCaseSupportUpdate:
+		h.setUsecaseSupported("EVSECC", true)
+	case cemevsecc.DataUpdateManufacturerData:
+		manufacturer, err := h.uccemevsecc.ManufacturerData(entity)
+		if err != nil {
+			fmt.Println("Error getting ManufacturerData:", err)
+		} else {
+			h.usecaseData.EvseccDeviceName = manufacturer.DeviceName
+			h.usecaseData.EvseccDeviceCode = manufacturer.DeviceCode
+			h.usecaseData.EvseccSerialNumber = manufacturer.SerialNumber
+			h.usecaseData.EvseccSoftwareRevision = manufacturer.SoftwareRevision
+			h.usecaseData.EvseccHardwareRevision = manufacturer.HardwareRevision
+			h.usecaseData.EvseccVendorName = manufacturer.VendorName
+			h.usecaseData.EvseccVendorCode = manufacturer.VendorCode
+			h.usecaseData.EvseccBrandName = manufacturer.BrandName
+			h.usecaseData.EvseccPowerSource = manufacturer.PowerSource
+			h.usecaseData.EvseccManufacturerNodeIdentification = manufacturer.ManufacturerNodeIdentification
+			h.usecaseData.EvseccManufacturerLabel = manufacturer.ManufacturerLabel
+			h.usecaseData.EvseccManufacturerDescription = manufacturer.ManufacturerDescription
+		}
+	case cemevsecc.DataUpdateOperatingState:
+		operatingState, errorMessage, err := h.uccemevsecc.OperatingState(entity)
+		if err != nil {
+			fmt.Println("Error getting OperatingState:", err)
+		} else {
+			h.usecaseData.EvseccOperatingState = string(operatingState)
+			h.usecaseData.EvseccOperatingStateDescription = errorMessage
+		}
+	}
 	if event == cemevsecc.UseCaseSupportUpdate {
 		h.setUsecaseSupported("EVSECC", true)
 	}
@@ -301,18 +414,18 @@ func (h *hems) HandleMaMpc(ski string, device spineapi.DeviceRemoteInterface, en
 
 // Write Functions
 
-func (h *hems) WriteLPCConsumptionLimit(duration int64, value float64) error {
+func (h *hems) WriteLPCConsumptionLimit(durationSeconds int64, value float64, active bool) error {
 	// iterate remote entities and write the provided consumption limit
 	entities := h.uceglpc.RemoteEntitiesScenarios()
 
-	fmt.Println("Writing LPC Consumption Limit:", duration, value)
+	fmt.Println("Writing LPC Consumption Limit:", durationSeconds, value, active)
 	fmt.Println("Found entities:", entities)
 	var errs []string
 	for _, entity := range entities {
 		_, err := h.uceglpc.WriteConsumptionLimit(entity.Entity, ucapi.LoadLimit{
-			Duration:     time.Duration(duration),
+			Duration:     time.Duration(durationSeconds) * time.Second,
 			IsChangeable: false,
-			IsActive:     true,
+			IsActive:     active,
 			Value:        value,
 		}, nil)
 		if err != nil {
@@ -330,10 +443,10 @@ func (h *hems) WriteLPCConsumptionLimit(duration int64, value float64) error {
 	return nil
 }
 
-func (h *hems) WriteLPCFailsafe(minDuration time.Duration, failsafePowerLimit float64) {
-	// iterate remote entities and write the failsafe
+func (h *hems) WriteLPCFailsafeDuration(minDuration time.Duration) {
+	// iterate remote entities and write the failsafe duration
 	entities := h.uceglpc.RemoteEntitiesScenarios()
-	fmt.Println("Writing LPC Failsafe:", minDuration, failsafePowerLimit)
+	fmt.Println("Writing LPC Failsafe Duration:", minDuration)
 	fmt.Println("Found entities:", entities)
 	for _, entity := range entities {
 		_, err := h.uceglpc.WriteFailsafeDurationMinimum(entity.Entity, minDuration)
@@ -342,7 +455,15 @@ func (h *hems) WriteLPCFailsafe(minDuration time.Duration, failsafePowerLimit fl
 		} else {
 			fmt.Println("Wrote failsafeDurationMinimum to entity", entity)
 		}
-		_, err = h.uceglpc.WriteFailsafeConsumptionActivePowerLimit(entity.Entity, failsafePowerLimit)
+	}
+}
+func (h *hems) WriteLPCFailsafeValue(failsafePowerLimit float64) {
+	// iterate remote entities and write the failsafe power limit
+	entities := h.uceglpc.RemoteEntitiesScenarios()
+	fmt.Println("Writing LPC Failsafe Power Limit:", failsafePowerLimit)
+	fmt.Println("Found entities:", entities)
+	for _, entity := range entities {
+		_, err := h.uceglpc.WriteFailsafeConsumptionActivePowerLimit(entity.Entity, failsafePowerLimit)
 		if err != nil {
 			fmt.Println("Error writing FailsafeConsumptionActivePowerLimit:", err)
 		} else {
@@ -723,35 +844,44 @@ func (h *hems) startWebInterface() {
 		}
 		cmd, _ := payload["cmd"].(string)
 		switch cmd {
-		case "lpc":
-			// extract duration and value
-			var dur int64
+		case "writeLPCConsumptionLimit":
+			// expect: durationSeconds (int), value (float), isActive (bool)
+			var durSec int64
 			var val float64
-			if d, ok := payload["duration"].(float64); ok {
-				dur = int64(d)
+			var isActive bool
+			if d, ok := payload["durationSeconds"].(float64); ok {
+				durSec = int64(d)
 			}
 			if v, ok := payload["value"].(float64); ok {
 				val = v
 			}
-			if err := h.WriteLPCConsumptionLimit(dur, val); err != nil {
+			if a, ok := payload["isActive"].(bool); ok {
+				isActive = a
+			}
+			if err := h.WriteLPCConsumptionLimit(durSec, val, isActive); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, _ = w.Write([]byte(err.Error()))
 				return
 			}
 			_, _ = w.Write([]byte("ok"))
 			return
-		case "failsafe":
-			// extract minDurationMs and failsafePowerLimit
-			var durMs int64
-			var limit float64
-			if d, ok := payload["minDurationMs"].(float64); ok {
-				durMs = int64(d)
+		case "writeLPCFailsafeDuration":
+			// expect: durationMinutes (int)
+			var minutes int64
+			if d, ok := payload["durationMinutes"].(float64); ok {
+				minutes = int64(d)
 			}
-			if l, ok := payload["failsafePowerLimit"].(float64); ok {
+			minDuration := time.Duration(minutes) * time.Minute
+			h.WriteLPCFailsafeDuration(minDuration)
+			_, _ = w.Write([]byte("ok"))
+			return
+		case "writeLPCFailsafeValue":
+			// expect: failsafePower (float)
+			var limit float64
+			if l, ok := payload["failsafePower"].(float64); ok {
 				limit = l
 			}
-			minDuration := time.Duration(durMs) * time.Millisecond
-			h.WriteLPCFailsafe(minDuration, limit)
+			h.WriteLPCFailsafeValue(limit)
 			_, _ = w.Write([]byte("ok"))
 			return
 		default:
@@ -761,40 +891,38 @@ func (h *hems) startWebInterface() {
 		}
 	})
 
-	// keep legacy endpoint
-	http.HandleFunc("/writeLpcLimit", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
+	// endpoint: return usecaseData (current values) in JSON-friendly units
+	http.HandleFunc("/api/usecasedata", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		/*	type Out struct {
+				// LPC explicit fields (from usecaseData struct)
+				LPCFailsafePower       float64 `json:"LpcFailsafePower"`
+				LPCFailsafeDurationMin int64   `json:"lpcFailsafeDurationMin"` // minutes
+				LPCLimitValue          float64 `json:"LpcLimitValue"`
+				LPCLimitDurationSec    int64   `json:"lpcLimitDurationSec"` // seconds
+				LPCLimitActive         bool    `json:"lpcLimitActive"`
+				// LPP explicit fields (from usecaseData struct)
+				LPPFailsafeValue       float64 `json:"lppFailsafeValue"`
+				LPPFailsafeDurationSec int64   `json:"lppFailsafeDurationSec"`
+				LPPLimitValue          float64 `json:"lppLimitValue"`
+				LPPLimitDurationSec    int64   `json:"lppLimitDurationSec"`
+				LPPLimitActive         bool    `json:"lppLimitActive"`
+			}
+			out := Out{
+				LPCFailsafePower:       h.usecaseData.LpcFailsafePower,
+				LPCFailsafeDurationMin: int64(h.usecaseData.LpcFailsafeDur / time.Minute),
+				LPCLimitValue:          h.usecaseData.LpcLimitValue,
+				LPCLimitDurationSec:    int64(h.usecaseData.LpcLimitDur / time.Second),
+				LPCLimitActive:         h.usecaseData.LpcLimitActive,
+				LPPFailsafeValue:       h.usecaseData.LppFailsafeValue,
+				LPPFailsafeDurationSec: int64(h.usecaseData.LppFailsafeDur / time.Second),
+				LPPLimitValue:          h.usecaseData.LppLimitValue,
+				LPPLimitDurationSec:    int64(h.usecaseData.LppLimitDuration / time.Second),
+				LPPLimitActive:         h.usecaseData.LppLimitActive,
+			}*/
+		if err := json.NewEncoder(w).Encode(h.usecaseData); err != nil {
+			h.Errorf("encode usecasedata: %v", err)
 		}
-		if err := r.ParseForm(); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("invalid form"))
-			return
-		}
-		durStr := r.FormValue("duration")
-		valStr := r.FormValue("value")
-		dur, err := strconv.ParseInt(durStr, 10, 64)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("invalid duration"))
-			return
-		}
-		val, err := strconv.ParseFloat(valStr, 64)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte("invalid value"))
-			return
-		}
-
-		err = h.WriteLPCConsumptionLimit(dur, val)
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte(err.Error()))
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte("ok"))
 	})
 
 	http.HandleFunc("/api/logs", func(w http.ResponseWriter, r *http.Request) {
