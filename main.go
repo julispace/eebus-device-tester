@@ -74,32 +74,37 @@ func writePEMFiles(certificate tls.Certificate, certPath, keyPath string) error 
 
 type usecaseData struct {
 	// LPC usecase data
-	LpcFailsafePower   float64       `json:"lpcFailsafePower,omitempty"`
-	LpcFailsafeDur     time.Duration `json:"lpcFailsafeDurMinutes,omitempty"`
-	LpcLimitValue      float64       `json:"lpcLimitValue,omitempty"`
-	LpcLimitDurSeconds time.Duration `json:"lpcLimitDurSeconds,omitempty"`
-	LpcLimitActive     bool          `json:"lpcLimitActive,omitempty"`
+	LpcFailsafePower              float64       `json:"lpcFailsafePower,omitempty"`
+	LpcFailsafeDur                time.Duration `json:"lpcFailsafeDurMinutes,omitempty"`
+	LpcLimitValue                 float64       `json:"lpcLimitValue,omitempty"`
+	LpcLimitDurSeconds            time.Duration `json:"lpcLimitDurSeconds,omitempty"`
+	LpcLimitActive                bool          `json:"lpcLimitActive,omitempty"`
+	LpcConsumptionLimitNominalMax float64       `json:"lpcConsumptionLimitNominalMax,omitempty"`
+	LpcHeartbeatOk                bool          `json:"lpcHeartbeatOk,omitempty"`
+	LpcHeartbeatTimestamp         time.Time     `json:"lpcHeartbeatTimestamp,omitempty"`
 	// LPP usecase data
-	LppFailsafeDur   time.Duration `json:"lppFailsafeDurMinutes,omitempty"`
-	LppFailsafeValue float64       `json:"lppFailsafeValue,omitempty"`
-	LppLimitValue    float64       `json:"lppLimitValue,omitempty"`
-	LppLimitDuration time.Duration `json:"lppLimitDurationSeconds,omitempty"`
-	LppLimitActive   bool          `json:"lppLimitActive,omitempty"`
+	LppFailsafeDur        time.Duration `json:"lppFailsafeDurMinutes,omitempty"`
+	LppFailsafeValue      float64       `json:"lppFailsafeValue,omitempty"`
+	LppLimitValue         float64       `json:"lppLimitValue,omitempty"`
+	LppLimitDuration      time.Duration `json:"lppLimitDurationSeconds,omitempty"`
+	LppLimitActive        bool          `json:"lppLimitActive,omitempty"`
+	LppHeartbeatOk        bool          `json:"lppHeartbeatOk,omitempty"`
+	LppHeartbeatTimestamp time.Time     `json:"lppHeartbeatTimestamp,omitempty"`
 	// EVSECC usecase data
-	EvseccDeviceName                     string `json:"evseccDeviceName,omitempty"`
-	EvseccDeviceCode                     string `json:"evseccDeviceCode,omitempty"`
-	EvseccSerialNumber                   string `json:"evseccSerialNumber,omitempty"`
-	EvseccSoftwareRevision               string `json:"evseccSoftwareRevision,omitempty"`
-	EvseccHardwareRevision               string `json:"evseccHardwareRevision,omitempty"`
-	EvseccVendorName                     string `json:"evseccVendorName,omitempty"`
-	EvseccVendorCode                     string `json:"evseccVendorCode,omitempty"`
-	EvseccBrandName                      string `json:"evseccBrandName,omitempty"`
-	EvseccPowerSource                    string `json:"evseccPowerSource,omitempty"`
-	EvseccManufacturerNodeIdentification string `json:"evseccManufacturerNodeIdentification,omitempty"`
-	EvseccManufacturerLabel              string `json:"evseccManufacturerLabel,omitempty"`
-	EvseccManufacturerDescription        string `json:"evseccManufacturerDescription,omitempty"`
-	EvseccOperatingState                 string `json:"evseccOperatingState,omitempty"`
-	EvseccOperatingStateDescription      string `json:"evseccOperatingStateDescription,omitempty"`
+	EvseccManufacturerData          ucapi.ManufacturerData `json:"evseccManufacturerData,omitempty"`
+	EvseccOperatingState            string                 `json:"evseccOperatingState,omitempty"`
+	EvseccOperatingStateDescription string                 `json:"evseccOperatingStateDescription,omitempty"`
+	// EVCC usecase data
+	EvccManufacturerData          ucapi.ManufacturerData     `json:"evccManufacturerData,omitempty"`
+	EvccChargeState               string                     `json:"evccChargeState,omitempty"`
+	EvccAsymmetricChargingSupport bool                       `json:"evccAsymmetricChargingSupport,omitempty"`
+	EvccCommunicationStandard     string                     `json:"evccCommunicationStandard,omitempty"`
+	EvccLimitMinimum              float64                    `json:"evccLimitMinimum,omitempty"`
+	EvccLimitMaximum              float64                    `json:"evccLimitMaximum,omitempty"`
+	EvccLimitStandby              float64                    `json:"evccLimitStandby,omitempty"`
+	EvccIdentifications           []ucapi.IdentificationItem `json:"evccIdentifications,omitempty"`
+	EvccSleepMode                 bool                       `json:"evccSleepMode,omitempty"`
+	EvccEvConnected               bool                       `json:"evccEvConnected,omitempty"`
 }
 
 type hems struct {
@@ -190,14 +195,15 @@ func (h *hems) run() {
 	}
 
 	configuration, err := api.NewConfiguration(
-		"Demo", "Demo", "HEMS", "123456789",
+		"DemoVendor", "DemoBrand", "Device-Tester", "123456789",
+		[]shipapi.DeviceCategoryType{shipapi.DeviceCategoryTypeEMobility},
 		model.DeviceTypeTypeEnergyManagementSystem,
 		[]model.EntityTypeType{model.EntityTypeTypeCEM},
 		port, certificate, time.Second*30)
-	configuration.SetAlternateIdentifier("Demo-HEMS-123456789")
 	if err != nil {
 		log.Fatal(err)
 	}
+	configuration.SetAlternateIdentifier("Demo-HEMS-123456789")
 
 	h.myService = service.NewService(configuration, h)
 	h.myService.SetLogging(h)
@@ -259,7 +265,7 @@ func (h *hems) run() {
 		os.Exit(0)
 	}
 
-	h.myService.RegisterRemoteSKI(remoteSki)
+	h.myService.RegisterRemoteSKI(remoteSki, "")
 
 	h.myService.Start()
 
@@ -300,6 +306,9 @@ func (h *hems) HandleEgLPP(ski string, device spineapi.DeviceRemoteInterface, en
 			h.usecaseData.LppLimitDuration = limit.Duration / time.Second
 			h.usecaseData.LppLimitActive = limit.IsActive
 		}
+	case eglpp.DataUpdateHeartbeat:
+		h.usecaseData.LppHeartbeatOk = h.uceglpp.IsHeartbeatWithinDuration(entity)
+		h.usecaseData.LppHeartbeatTimestamp = time.Now()
 	}
 	h.updateEntitiesFromDevice(device)
 }
@@ -333,16 +342,81 @@ func (h *hems) HandleEgLPC(ski string, device spineapi.DeviceRemoteInterface, en
 		} else {
 			h.usecaseData.LpcFailsafePower = powerLimit
 		}
+	case eglpc.DataUpdateHeartbeat:
+		h.usecaseData.LpcHeartbeatOk = h.uceglpc.IsHeartbeatWithinDuration(entity)
+		h.usecaseData.LpcHeartbeatTimestamp = time.Now()
 	}
+	nominal, err := h.uceglpc.ConsumptionNominalMax(entity)
+	if err == nil {
+		h.usecaseData.LpcConsumptionLimitNominalMax = nominal
+	}
+
 	h.updateEntitiesFromDevice(device)
 }
 
 // HandleEgEvcc Energy Guard EVCC Handler
 func (h *hems) HandleEgEvcc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("EgEVCC Event: ", event)
-	if event == cemevcc.UseCaseSupportUpdate {
+	switch event {
+	case cemevcc.UseCaseSupportUpdate:
 		h.setUsecaseSupported("EVCC", true)
+	case cemevcc.DataUpdateManufacturerData:
+		manufacturer, err := h.uccemevcc.ManufacturerData(entity)
+		if err != nil {
+			fmt.Println("Error getting ManufacturerData:", err)
+		} else {
+			h.usecaseData.EvccManufacturerData = manufacturer
+		}
+	case cemevcc.DataUpdateChargeState:
+		chargeState, err := h.uccemevcc.ChargeState(entity)
+		if err != nil {
+			fmt.Println("Error getting ChargeState:", err)
+		} else {
+			h.usecaseData.EvccChargeState = string(chargeState)
+		}
+	case cemevcc.DataUpdateAsymmetricChargingSupport:
+		support, err := h.uccemevcc.AsymmetricChargingSupport(entity)
+		if err != nil {
+			fmt.Println("Error getting AsymmetricChargingSupport:", err)
+		} else {
+			h.usecaseData.EvccAsymmetricChargingSupport = support
+		}
+	case cemevcc.DataUpdateCommunicationStandard:
+		standard, err := h.uccemevcc.CommunicationStandard(entity)
+		if err != nil {
+			fmt.Println("Error getting CommunicationStandard:", err)
+		} else {
+			h.usecaseData.EvccCommunicationStandard = string(standard)
+		}
+	case cemevcc.DataUpdateCurrentLimits:
+		minimum, maximum, standby, err := h.uccemevcc.ChargingPowerLimits(entity)
+		if err != nil {
+			fmt.Println("Error getting ChargingPowerLimits:", err)
+		} else {
+			h.usecaseData.EvccLimitMinimum = minimum
+			h.usecaseData.EvccLimitMaximum = maximum
+			h.usecaseData.EvccLimitStandby = standby
+		}
+	case cemevcc.DataUpdateIdentifications:
+		identifications, err := h.uccemevcc.Identifications(entity)
+		if err != nil {
+			fmt.Println("Error getting Identifications:", err)
+		} else {
+			h.usecaseData.EvccIdentifications = identifications
+		}
+
+	case cemevcc.DataUpdateIsInSleepMode:
+		sleepMode, err := h.uccemevcc.IsInSleepMode(entity)
+		if err != nil {
+			fmt.Println("Error getting IsInSleepMode:", err)
+		} else {
+			h.usecaseData.EvccSleepMode = sleepMode
+		}
+	case cemevcc.EvConnected:
+	case cemevcc.EvDisconnected:
+		h.usecaseData.EvccEvConnected = h.uccemevcc.EVConnected(entity)
 	}
+
 	h.updateEntitiesFromDevice(device)
 }
 
@@ -366,18 +440,7 @@ func (h *hems) HandleEgEvsecc(ski string, device spineapi.DeviceRemoteInterface,
 		if err != nil {
 			fmt.Println("Error getting ManufacturerData:", err)
 		} else {
-			h.usecaseData.EvseccDeviceName = manufacturer.DeviceName
-			h.usecaseData.EvseccDeviceCode = manufacturer.DeviceCode
-			h.usecaseData.EvseccSerialNumber = manufacturer.SerialNumber
-			h.usecaseData.EvseccSoftwareRevision = manufacturer.SoftwareRevision
-			h.usecaseData.EvseccHardwareRevision = manufacturer.HardwareRevision
-			h.usecaseData.EvseccVendorName = manufacturer.VendorName
-			h.usecaseData.EvseccVendorCode = manufacturer.VendorCode
-			h.usecaseData.EvseccBrandName = manufacturer.BrandName
-			h.usecaseData.EvseccPowerSource = manufacturer.PowerSource
-			h.usecaseData.EvseccManufacturerNodeIdentification = manufacturer.ManufacturerNodeIdentification
-			h.usecaseData.EvseccManufacturerLabel = manufacturer.ManufacturerLabel
-			h.usecaseData.EvseccManufacturerDescription = manufacturer.ManufacturerDescription
+			h.usecaseData.EvseccManufacturerData = manufacturer
 		}
 	case cemevsecc.DataUpdateOperatingState:
 		operatingState, errorMessage, err := h.uccemevsecc.OperatingState(entity)

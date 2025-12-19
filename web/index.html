@@ -43,6 +43,13 @@
             font-size: 20px;
             margin: 0
         }
+        h5 {
+            margin: 0 0 10px 0;
+            display: block;
+            width: 100%;
+            padding-bottom: 6px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+        }
 
         .top {
             display: flex;
@@ -361,6 +368,24 @@
                             <button id="sendWriteFailsafePower">Send Failsafe Power</button>
                             <button id="sendWriteFailsafeDuration">Send Failsafe Duration</button>
                         </div>
+                        <h5>Scenario 3 - Heartbeat</h5>
+                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                            <div style="min-width:110px">
+                                <div style="font-size:12px;color:var(--muted)">Heartbeat Received</div>
+                                <div id="lpcHeartbeat" style="font-weight:600">-</div>
+                            </div>
+                            <div style="min-width:110px">
+                                <div style="font-size:12px;color:var(--muted)">Last Heartbeat Time</div>
+                                <div id="lpcHeartbeatTimestamp" style="font-weight:600">-</div>
+                            </div>
+                        </div>
+                        <h5>Scenario 4 - Constraints</h5>
+                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                            <div style="min-width:110px">
+                                <div style="font-size:12px;color:var(--muted)">Maximum possible Power Consumption</div>
+                                <div id="lpcMaxNominalPower" style="font-weight:600">-</div>
+                            </div>
+                        </div>
                     </div>
 
                     <div style="height:1px;background:grey;margin:6px 0"></div>
@@ -397,55 +422,9 @@
                     </div>
                     <div id="evseccDisplay" style="display:none;gap:8px;flex-wrap:wrap;align-items:center">
                         <h5>Scenario 1 - EVSE sends manufacturer info</h5>
-                        <div style="display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap; margin-top:8px;">
-                            <div style="min-width:110px">
-                                <div style="font-size:12px;color:var(--muted)">Device Name</div>
-                                <div id="evseccDeviceName" style="font-weight:600">-</div>
-                            </div>
-                            <div style="min-width:110px">
-                                <div style="font-size:12px;color:var(--muted)">Device Code</div>
-                                <div id="evseccDevicecode" style="font-weight:600">-</div>
-                            </div>
-                            <div style="min-width:110px">
-                                <div style="font-size:12px;color:var(--muted)">Serial Number</div>
-                                <div id="evseccSerialNumber" style="font-weight:600">-</div>
-                            </div>
-                            <div style="min-width:110px">
-                                <div style="font-size:12px;color:var(--muted)">Software Revision</div>
-                                <div id="evseccSoftwareRevision" style="font-weight:600">-</div>
-                            </div>
-                            <div style="min-width:80px">
-                                <div style="font-size:12px;color:var(--muted)">Hardware Revision</div>
-                                <div id="evseccHardwareRevision" style="font-weight:600">-</div>
-                            </div>
-                            <div style="min-width:80px">
-                                <div style="font-size:12px;color:var(--muted)">Vendor Name</div>
-                                <div id="evseccVendorName" style="font-weight:600">-</div>
-                            </div>
-                            <div style="min-width:80px">
-                                <div style="font-size:12px;color:var(--muted)">Vendor Code</div>
-                                <div id="evseccVendorCode" style="font-weight:600">-</div>
-                            </div>
-                            <div style="min-width:80px">
-                                <div style="font-size:12px;color:var(--muted)">Brand Name</div>
-                                <div id="evseccBrandName" style="font-weight:600">-</div>
-                            </div>
-                            <div style="min-width:80px">
-                                <div style="font-size:12px;color:var(--muted)">Power Source</div>
-                                <div id="evseccPowerSource" style="font-weight:600">-</div>
-                            </div>
-                            <div style="min-width:80px">
-                                <div style="font-size:12px;color:var(--muted)">Manufacturer Node ID</div>
-                                <div id="evseccManufacturerNodeId" style="font-weight:600">-</div>
-                            </div>
-                            <div style="min-width:80px">
-                                <div style="font-size:12px;color:var(--muted)">Manufacturer Label</div>
-                                <div id="evseccManufacturerLabel" style="font-weight:600">-</div>
-                            </div>
-                            <div style="min-width:80px">
-                                <div style="font-size:12px;color:var(--muted)">Manufacturer Description</div>
-                                <div id="evseccManufacturerDescription" style="font-weight:600">-</div>
-                            </div>
+                        <div id="evseccManufacturer"
+                             style="display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap; margin-top:8px;">
+
                         </div>
                         <h5>Scenario 2 - EVSE sends error state</h5>
                         <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
@@ -458,6 +437,7 @@
                                 <div id="evseccErrorMessage" style="font-weight:600">-</div>
                             </div>
                         </div>
+
                     </div>
                 </div>
 
@@ -1293,8 +1273,7 @@
                 updateLPPDisplay(supported);
             } else if (String(name || '').trim().toLowerCase() === 'lpc') {
                 updateLPCDisplay(supported);
-            }
-            else if (String(name || '').trim().toLowerCase() === 'evsecc') {
+            } else if (String(name || '').trim().toLowerCase() === 'evsecc') {
                 updateEVSECCDisplay(supported);
             }
         } catch (e) {
@@ -1312,12 +1291,30 @@
             const res = await fetch('/api/usecasedata');
             if (!res.ok) return;
             const d = await res.json();
+            const fallback = v => (v !== undefined ? v : '-');
 
             const setText = (id, v) => {
                 console.log('Updating %s to %s', id, v);
                 const el = document.getElementById(id);
-                if (el) el.textContent = (v !== undefined ? v : '-');
+                if (el) el.textContent = fallback(v);
             };
+            const setManufacturer = (id, data) => {
+                const el = document.getElementById(id);
+                if (el && data !== undefined) {
+                    el.innerHTML = `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Device Name</div><div style="font-weight:600">${fallback(data.DeviceName)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Device Code</div><div style="font-weight:600">${fallback(data.DeviceCode)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Serial Number</div><div style="font-weight:600">${fallback(data.SerialNumber)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Software Revision</div><div style="font-weight:600">${fallback(data.SoftwareRevision)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Hardware Revision</div><div style="font-weight:600">${fallback(data.HardwareRevision)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Vendor Name</div><div style="font-weight:600">${fallback(data.VendorName)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Vendor Code</div><div style="font-weight:600">${fallback(data.VendorCode)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Brand Name</div><div style="font-weight:600">${fallback(data.BrandName)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Power Source</div><div style="font-weight:600">${fallback(data.PowerSource)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Manufacturer Node ID</div><div style="font-weight:600">${fallback(data.ManufacturerNodeIdentification)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Manufacturer Label</div><div style="font-weight:600">${fallback(data.ManufacturerLabel)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Manufacturer Description</div><div style="font-weight:600">${fallback(data.ManufacturerDescription)}</div></div>`;
+                }
+            }
             // update LPC
             if (lpcSupported) {
                 setText('lpcLimitValue', d.lpcLimitValue);
@@ -1325,6 +1322,9 @@
                 setText('lpcLimitActive', d.lpcLimitActive);
                 setText('lpcFailsafePower', d.lpcFailsafePower);
                 setText('lpcFailsafeDuration', d.lpcFailsafeDurMinutes);
+                setText('lpcMaxNominalPower', d.lpcConsumptionLimitNominalMax)
+                setText('lpcHeartbeat', d.lpcHeartbeatOk)
+                setText('lpcHeartbeatTimestamp', d.lpcHeartbeatTimestamp)
             }
             if (lppSupported) {
                 // update LPP explicit fields only when supported
@@ -1334,19 +1334,8 @@
                 setText('lppLimitDur', d.lppLimitDurationSeconds);
                 setText('lppLimitActive', (d.lppLimitActive !== undefined) ? (d.lppLimitActive ? 'yes' : 'no') : '-');
             }
-            if(evseccSupported) {
-                setText('evseccDeviceName', d.evseccDeviceName);
-                setText('evseccDevicecode', d.evseccDeviceCode);
-                setText('evseccSerialNumber', d.evseccSerialNumber);
-                setText('evseccSoftwareRevision', d.evseccSoftwareRevision);
-                setText('evseccHardwareRevision', d.evseccHardwareRevision);
-                setText('evseccVendorName', d.evseccVendorName);
-                setText('evseccVendorCode', d.evseccVendorCode);
-                setText('evseccBrandName', d.evseccBrandName);
-                setText('evseccPowerSource', d.evseccPowerSource);
-                setText('evseccManufacturerNodeId', d.evseccManufacturerNodeIdentification);
-                setText('evseccManufacturerLabel', d.evseccManufacturerLabel);
-                setText('evseccManufacturerDescription', d.evseccManufacturerDescription);
+            if (evseccSupported) {
+                setManufacturer('evseccManufacturer', d.evseccManufacturerData);
                 setText('evseccOperatingState', d.evseccOperatingState);
                 setText('evseccErrorMessage', d.evseccOperatingStateDescription);
 
