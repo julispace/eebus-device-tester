@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -78,17 +77,17 @@ type usecaseData struct {
 	LpcFailsafeDur                time.Duration `json:"lpcFailsafeDurMinutes,omitempty"`
 	LpcLimitValue                 float64       `json:"lpcLimitValue,omitempty"`
 	LpcLimitDurSeconds            time.Duration `json:"lpcLimitDurSeconds,omitempty"`
-	LpcLimitActive                bool          `json:"lpcLimitActive,omitempty"`
+	LpcLimitActive                bool          `json:"lpcLimitActive"`
 	LpcConsumptionLimitNominalMax float64       `json:"lpcConsumptionLimitNominalMax,omitempty"`
-	LpcHeartbeatOk                bool          `json:"lpcHeartbeatOk,omitempty"`
+	LpcHeartbeatOk                bool          `json:"lpcHeartbeatOk"`
 	LpcHeartbeatTimestamp         time.Time     `json:"lpcHeartbeatTimestamp,omitempty"`
 	// LPP usecase data
 	LppFailsafeDur        time.Duration `json:"lppFailsafeDurMinutes,omitempty"`
 	LppFailsafeValue      float64       `json:"lppFailsafeValue,omitempty"`
 	LppLimitValue         float64       `json:"lppLimitValue,omitempty"`
 	LppLimitDuration      time.Duration `json:"lppLimitDurationSeconds,omitempty"`
-	LppLimitActive        bool          `json:"lppLimitActive,omitempty"`
-	LppHeartbeatOk        bool          `json:"lppHeartbeatOk,omitempty"`
+	LppLimitActive        bool          `json:"lppLimitActive"`
+	LppHeartbeatOk        bool          `json:"lppHeartbeatOk"`
 	LppHeartbeatTimestamp time.Time     `json:"lppHeartbeatTimestamp,omitempty"`
 	// EVSECC usecase data
 	EvseccManufacturerData          ucapi.ManufacturerData `json:"evseccManufacturerData,omitempty"`
@@ -96,15 +95,15 @@ type usecaseData struct {
 	EvseccOperatingStateDescription string                 `json:"evseccOperatingStateDescription,omitempty"`
 	// EVCC usecase data
 	EvccManufacturerData          ucapi.ManufacturerData     `json:"evccManufacturerData,omitempty"`
-	EvccChargeState               string                     `json:"evccChargeState,omitempty"`
+	EvccChargeState               string                     `json:"evccChargeState"`
 	EvccAsymmetricChargingSupport bool                       `json:"evccAsymmetricChargingSupport,omitempty"`
 	EvccCommunicationStandard     string                     `json:"evccCommunicationStandard,omitempty"`
 	EvccLimitMinimum              float64                    `json:"evccLimitMinimum,omitempty"`
 	EvccLimitMaximum              float64                    `json:"evccLimitMaximum,omitempty"`
 	EvccLimitStandby              float64                    `json:"evccLimitStandby,omitempty"`
 	EvccIdentifications           []ucapi.IdentificationItem `json:"evccIdentifications,omitempty"`
-	EvccSleepMode                 bool                       `json:"evccSleepMode,omitempty"`
-	EvccEvConnected               bool                       `json:"evccEvConnected,omitempty"`
+	EvccSleepMode                 bool                       `json:"evccSleepMode"`
+	EvccEvConnected               bool                       `json:"evccEvConnected"`
 }
 
 type hems struct {
@@ -169,7 +168,7 @@ func (h *hems) run() {
 			if _, errKey := os.Stat(defaultKeyPath); errKey == nil {
 				certificate, err = tls.LoadX509KeyPair(defaultCertPath, defaultKeyPath)
 				if err != nil {
-					log.Fatalf("lade cert/key aus %s,%s: %v", defaultCertPath, defaultKeyPath, err)
+					log.Fatalf("loading cert/key from %s,%s: %v", defaultCertPath, defaultKeyPath, err)
 				}
 			}
 		}
@@ -183,8 +182,8 @@ func (h *hems) run() {
 				log.Fatal(err)
 			}
 
-			fmt.Printf("Zertifikat geschrieben nach `%s`\n", defaultCertPath)
-			fmt.Printf("Private Key geschrieben nach `%s`\n", defaultKeyPath)
+			fmt.Printf("Certificate written to `%s`\n", defaultCertPath)
+			fmt.Printf("Private Key written to `%s`\n", defaultKeyPath)
 		}
 	}
 
@@ -413,10 +412,12 @@ func (h *hems) HandleEgEvcc(ski string, device spineapi.DeviceRemoteInterface, e
 			h.usecaseData.EvccSleepMode = sleepMode
 		}
 	case cemevcc.EvConnected:
+		fmt.Println("EVCC Connected")
+		h.usecaseData.EvccEvConnected = true
 	case cemevcc.EvDisconnected:
-		h.usecaseData.EvccEvConnected = h.uccemevcc.EVConnected(entity)
+		fmt.Println("EVCC Disconnected")
+		h.usecaseData.EvccEvConnected = false
 	}
-
 	h.updateEntitiesFromDevice(device)
 }
 
@@ -827,20 +828,35 @@ func (h *hems) startWebInterface() {
 	h.wsConns = make(map[*websocket.Conn]struct{})
 	h.wsMu.Unlock()
 
-	// Load template from web/index.html (external file) so it can be edited separately
-	exePath := "."
-	tplPath := filepath.Join(exePath, "web", "index.html")
-	tplBytes, err := os.ReadFile(tplPath)
+	// determine executable directory (used as base for web assets)
+	exePath, err := os.Executable()
 	if err != nil {
-		h.Errorf("failed to read web template %s: %v", tplPath, err)
-		return
+		exePath = "."
 	}
-	tmpl := template.Must(template.New("index").Parse(string(tplBytes)))
+	exePath = filepath.Dir(exePath)
 
+	// We deliberately read static assets from disk on every request and
+	// set headers to prevent any caching in browser or in the program.
+	// This keeps the UI editable during development without restart.
+
+	// index handler: read `web/index.html` from disk on every request
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := tmpl.Execute(w, nil); err != nil {
-			h.Errorf("template execute: %v", err)
+		// no-cache headers for browser
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+
+		indexPath := filepath.Join(exePath, "web", "index.html")
+		data, err := os.ReadFile(indexPath)
+		if err != nil {
+			h.Errorf("failed to read web template %s: %v", indexPath, err)
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte("internal error"))
+			return
+		}
+		if _, err := w.Write(data); err != nil {
+			h.Errorf("write index.html: %v", err)
 		}
 	})
 
@@ -957,32 +973,6 @@ func (h *hems) startWebInterface() {
 	// endpoint: return usecaseData (current values) in JSON-friendly units
 	http.HandleFunc("/api/usecasedata", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		/*	type Out struct {
-				// LPC explicit fields (from usecaseData struct)
-				LPCFailsafePower       float64 `json:"LpcFailsafePower"`
-				LPCFailsafeDurationMin int64   `json:"lpcFailsafeDurationMin"` // minutes
-				LPCLimitValue          float64 `json:"LpcLimitValue"`
-				LPCLimitDurationSec    int64   `json:"lpcLimitDurationSec"` // seconds
-				LPCLimitActive         bool    `json:"lpcLimitActive"`
-				// LPP explicit fields (from usecaseData struct)
-				LPPFailsafeValue       float64 `json:"lppFailsafeValue"`
-				LPPFailsafeDurationSec int64   `json:"lppFailsafeDurationSec"`
-				LPPLimitValue          float64 `json:"lppLimitValue"`
-				LPPLimitDurationSec    int64   `json:"lppLimitDurationSec"`
-				LPPLimitActive         bool    `json:"lppLimitActive"`
-			}
-			out := Out{
-				LPCFailsafePower:       h.usecaseData.LpcFailsafePower,
-				LPCFailsafeDurationMin: int64(h.usecaseData.LpcFailsafeDur / time.Minute),
-				LPCLimitValue:          h.usecaseData.LpcLimitValue,
-				LPCLimitDurationSec:    int64(h.usecaseData.LpcLimitDurSeconds / time.Second),
-				LPCLimitActive:         h.usecaseData.LpcLimitActive,
-				LPPFailsafeValue:       h.usecaseData.LppFailsafeValue,
-				LPPFailsafeDurationSec: int64(h.usecaseData.LppFailsafeDur / time.Second),
-				LPPLimitValue:          h.usecaseData.LppLimitValue,
-				LPPLimitDurationSec:    int64(h.usecaseData.LppLimitDuration / time.Second),
-				LPPLimitActive:         h.usecaseData.LppLimitActive,
-			}*/
 		if err := json.NewEncoder(w).Encode(h.usecaseData); err != nil {
 			h.Errorf("encode usecasedata: %v", err)
 		}
@@ -1029,11 +1019,61 @@ func (h *hems) startWebInterface() {
 		_, _ = w.Write(h.lastEntitiesJSON)
 	})
 
-	// Serve static /web assets if needed
+	// Serve static /web assets from disk on every request with no-cache headers.
 	fsDir := filepath.Join(exePath, "web")
-	// limit to files in web dir
-	fileServer := http.FileServer(http.Dir(fsDir))
-	http.Handle("/web/", http.StripPrefix("/web/", fileServer))
+	http.HandleFunc("/web/", func(w http.ResponseWriter, r *http.Request) {
+		// set no-cache headers for browser
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+
+		// derive relative path under fsDir
+		rel := strings.TrimPrefix(r.URL.Path, "/web/")
+		if rel == "" {
+			// default to index.html inside web
+			rel = "index.html"
+		}
+		// clean the path to prevent traversal
+		rel = filepath.Clean(rel)
+		filePath := filepath.Join(fsDir, rel)
+		// ensure the resulting path is still under fsDir
+		absFsDir, err := filepath.Abs(fsDir)
+		if err != nil {
+			h.Errorf("abs fsDir: %v", err)
+			http.NotFound(w, r)
+			return
+		}
+		absFilePath, err := filepath.Abs(filePath)
+		if err != nil {
+			h.Errorf("abs filePath: %v", err)
+			http.NotFound(w, r)
+			return
+		}
+		if !strings.HasPrefix(absFilePath, absFsDir) {
+			h.Errorf("attempted path traversal: %s", filePath)
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+
+		// serve file directly from disk (reads on each request)
+		info, err := os.Stat(absFilePath)
+		if err != nil {
+			h.Debugf("static file not found: %s: %v", absFilePath, err)
+			http.NotFound(w, r)
+			return
+		}
+		if info.IsDir() {
+			indexPath := filepath.Join(absFilePath, "index.html")
+			if _, err := os.Stat(indexPath); err == nil {
+				http.ServeFile(w, r, indexPath)
+				return
+			}
+			http.NotFound(w, r)
+			return
+		}
+
+		http.ServeFile(w, r, absFilePath)
+	})
 
 	addr := fmt.Sprintf("localhost:%d", webPort)
 	h.Infof("Starting web interface on %s", addr)
