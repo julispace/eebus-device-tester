@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -29,7 +30,7 @@ import (
 	cemevsecc "github.com/enbility/eebus-go/usecases/cem/evsecc"
 	eglpc "github.com/enbility/eebus-go/usecases/eg/lpc"
 	eglpp "github.com/enbility/eebus-go/usecases/eg/lpp"
-	mampc "github.com/enbility/eebus-go/usecases/ma/mpc"
+	//mampc "github.com/enbility/eebus-go/usecases/ma/mpc"
 
 	shipapi "github.com/enbility/ship-go/api"
 	"github.com/enbility/ship-go/cert"
@@ -247,7 +248,7 @@ func (h *hems) run() {
 
 	// LPC
 	h.uceglpc = eglpc.NewLPC(localEntity, h.HandleEgLPC)
-	h.uceglpc.UpdateUseCaseAvailability(true)
+	h.uceglpc.UpdateUseCaseAvailability(false)
 	h.myService.AddUseCase(h.uceglpc)
 	h.setUsecaseSupported("LPC", false)
 
@@ -256,9 +257,9 @@ func (h *hems) run() {
 	h.setUsecaseSupported("LPP", false)
 
 	// MPC
-	h.ucmampc = mampc.NewMPC(localEntity, h.HandleMaMpc)
-	h.myService.AddUseCase(h.ucmampc)
-	h.setUsecaseSupported("MPC", false)
+	//h.ucmampc = mampc.NewMPC(localEntity, h.HandleMaMpc)
+	//h.myService.AddUseCase(h.ucmampc)
+	//h.setUsecaseSupported("MPC", false)
 
 	if len(remoteSki) == 0 {
 		os.Exit(0)
@@ -390,7 +391,7 @@ func (h *hems) HandleEgEvcc(ski string, device spineapi.DeviceRemoteInterface, e
 	case cemevcc.DataUpdateCurrentLimits:
 		minimum, maximum, standby, err := h.uccemevcc.ChargingPowerLimits(entity)
 		if err != nil {
-			fmt.Println("Error getting ChargingPowerLimits:", err)
+			fmt.Println("Error getting ChargingPowerLimits:", err, minimum, maximum, standby)
 		} else {
 			h.usecaseData.EvccLimitMinimum = minimum
 			h.usecaseData.EvccLimitMaximum = maximum
@@ -468,13 +469,13 @@ func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, e
 }
 
 // HandleMaMpc MaMPC Handler
-func (h *hems) HandleMaMpc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
+/*func (h *hems) HandleMaMpc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("MaMpc Event: ", event)
 	if event == mampc.UseCaseSupportUpdate {
 		h.setUsecaseSupported("MPC", true)
 	}
 	h.updateEntitiesFromDevice(device)
-}
+}*/
 
 // Write Functions
 
@@ -654,10 +655,12 @@ func (h *hems) Infof(format string, args ...interface{}) {
 
 func (h *hems) Error(args ...interface{}) {
 	h.print("ERROR", args...)
+	debug.PrintStack()
 }
 
 func (h *hems) Errorf(format string, args ...interface{}) {
 	h.printFormat("ERRORF", format, args...)
+	debug.PrintStack()
 }
 
 func (h *hems) currentTimestamp() string {

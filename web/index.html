@@ -54,10 +54,7 @@
         .top {
             display: flex;
             gap: 12px;
-            align-items: stretch; /* stretch so left and right panels share the same height and adjust dynamically */
-            height: calc(100vh - 260px);
-            /* expose the dynamic height so child elements (like manufacturer-details) can use it */
-            --panel-height: calc(100vh - 260px);
+            align-items: stretch;
         }
 
         .card {
@@ -89,13 +86,15 @@
         /* left column (small) */
         #leftColumn { /* much smaller to give parsed traces priority */
             width: 300px;
-            min-width: 240px;
-            max-width: 420px;
-            box-sizing: border-box;
+            min-width: 440px;
+            max-width: 620px;
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
             gap: 12px;
+            box-sizing: border-box;
+            align-self: stretch;
+            min-height: 0;
         }
 
         /* control panel: labels above inputs */
@@ -143,7 +142,7 @@
             flex-direction: column;
             gap: 6px;
             /* ensure details never exceed the left panel height (which equals .top height) */
-            max-height: var(--panel-height);
+            /*max-height: var(--panel-height);*/
         }
 
         input[type="text"], input[type="number"], select {
@@ -196,7 +195,16 @@
 
         /* right column */
         /* SPINE Messages & Trace Log tabs */
-        /* make parsed traces list use flexible height instead of a fixed max-height */
+        #parsedPanel {
+            padding: 12px;
+            flex: 1;
+            min-width: 200px;
+            display: flex;
+            flex-direction: column;
+            align-self: stretch;
+            min-height: 0;
+        }
+
         #parsedTracesList {
             list-style: none;
             padding: 0;
@@ -204,8 +212,7 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
-            /* removed fixed max-height so it can size dynamically */
-            flex: 1 1 auto;
+            max-height: 1000px;
             overflow: auto;
         }
 
@@ -223,10 +230,9 @@
             line-height: 18px;
         }
 
-        /* selected (clicked) trace should be visually darker */
         #parsedTracesList li.selected {
-            background: rgba(0, 0, 0, 0.06);
-            box-shadow: 0 0 0 1px rgba(0,0,0,0.06) inset;
+            background: #e8f0ff;
+            box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.12) inset;
         }
 
         .trace-meta {
@@ -256,7 +262,6 @@
         #entitiesPanel {
             margin-bottom: 10px;
         }
-
 
         #entitiesList {
             list-style: none;
@@ -307,7 +312,9 @@
             padding: 12px;
             border-radius: 6px;
             overflow: auto;
-            /* don't enforce a fixed max-height here - JS will set it to 50% of parsedPanel on open */
+            flex: 1;
+            max-height: 50%;
+            min-height: 0;
         }
 
         #traceDetail.header {
@@ -348,6 +355,71 @@
             #parsedTracesList {
                 max-height: 200px
             }
+        }
+
+        /* Style the tab */
+        .tab {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+        }
+
+        /* Style the buttons that are used to open the tab content */
+        .tab button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            transition: 0.3s;
+            color: black;
+        }
+
+        /* Change background color of buttons on hover */
+        .tab button:hover {
+            background-color: #ddd;
+        }
+
+        /* Create an active/current tablink class */
+        .tab button.active {
+            background-color: #ccc;
+        }
+
+        /* Style the tab content */
+        .tabcontent {
+            display: none;
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-top: none;
+            flex: 1;
+            overflow: auto;
+            min-height: 0;
+        }
+
+        #tabContent {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        @keyframes flash-bg {
+            0% {
+                background-color: rgba(37, 99, 235, 0.24);
+            }
+            60% {
+                background-color: rgba(37, 99, 235, 0.12);
+            }
+            100% {
+                background-color: transparent;
+            }
+        }
+
+        .flash-change {
+            animation: flash-bg 10000ms ease-out;
+            border-radius: 6px; /* optional, passt zu list items */
         }
     </style>
 </head>
@@ -482,6 +554,7 @@
                                 <div id="evseccErrorMessage" class="data-value">-</div>
                             </div>
                         </div>
+
                     </div>
                     <div style="height:1px;background:grey;margin:6px 0"></div>
 
@@ -506,6 +579,14 @@
                             <div id="evccAsymmetricCharging" class="data-value">-</div>
                         </div>
                         <h5>Scenario 4 - EV sends identification</h5>
+                        <div class="data-container">
+                            <div class="data-label">MAC type</div>
+                            <div id="evccIdentificationType" class="data-value">-</div>
+                        </div>
+                        <div class="data-container">
+                            <div class="data-label">MAC Address</div>
+                            <div id="evccIdentificationValue" class="data-value">-</div>
+                        </div>
                         <h5>Scenario 5 - EV sends manufacturer</h5>
                         <div class="data-container">
                             <div class="data-label">Manufacturer Data</div>
@@ -556,13 +637,17 @@
         <div class="card panel" id="parsedPanel"
              style="padding:12px; flex:1; min-width:200px; display:flex; flex-direction:column;">
             <h3 style="margin:0 0 6px 0">SPINE Messages / Trace Log</h3>
-            <div style="display:flex; gap:8px; margin-bottom:8px;">
+            <div class="tab">
+                <button class="tablinks" onclick="openTab(event, 'spineContent')" id="defaultOpen">Spine Messages
+                </button>
+                <button class="tablinks" onclick="openTab(event, 'logContent')">Tracelog</button>
+            </div>
+            <!--<div style="display:flex; gap:8px; margin-bottom:8px;">
                 <button id="tabSpine" class="secondary">SPINE Messages</button>
                 <button id="tabLog" class="secondary">Trace Log</button>
-            </div>
+            </div>-->
             <div id="tabContent" style="display:flex; flex-direction:column; gap:8px; flex:1;">
-                <!-- make spineContent a column-flex container so list + detail can share height -->
-                <div id="spineContent" style="display:flex; flex-direction:column; gap:8px; flex:1; overflow:hidden;">
+                <div class="tabcontent" id="spineContent" style="display:block; flex:1; overflow:auto">
                     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
                         <div id="parsedTracesStatus" style="color:var(--muted); font-size:13px">Waiting for spine
                             messages...
@@ -586,7 +671,7 @@
                     </div>
                 </div>
 
-                <div id="logContent" style="display:none; flex-direction:column; gap:8px;">
+                <div class="tabcontent" id="logContent" style="display:none; flex-direction:column; gap:8px;">
                     <div style="display:flex; align-items:center; justify-content:space-between;">
                         <div style="color:var(--muted);">Trace Log (raw)</div>
                         <button id="logsToBottomBtn"
@@ -618,11 +703,48 @@
         });
     }
 
+    const flashElement = (el) => {
+        if (!el) return;
+        el.classList.remove('flash-change');
+        // force reflow to restart animation
+        void el.offsetWidth;
+        el.classList.add('flash-change');
+
+        function onEnd() {
+            el.classList.remove('flash-change');
+            el.removeEventListener('animationend', onEnd);
+        }
+
+        el.addEventListener('animationend', onEnd);
+    };
     // Setup elements safely
     const cmdSelect = document.getElementById('cmdSelect');
 
+    function openTab(evt, tabName) {
+        // Declare all variables
+        var i, tabcontent, tablinks;
+
+        // Get all elements with class="tabcontent" and hide them
+        tabcontent = document.getElementsByClassName("tabcontent");
+        for (i = 0; i < tabcontent.length; i++) {
+            tabcontent[i].style.display = "none";
+        }
+
+        // Get all elements with class="tablinks" and remove the class "active"
+        tablinks = document.getElementsByClassName("tablinks");
+        for (i = 0; i < tablinks.length; i++) {
+            tablinks[i].className = tablinks[i].className.replace(" active", "");
+        }
+
+        // Show the current tab, and add an "active" class to the button that opened the tab
+        document.getElementById(tabName).style.display = "block";
+        evt.currentTarget.className += " active";
+    }
+
+    document.getElementById("defaultOpen").click();
+
     // Usecases
-    function renderUsecases(list) {
+    function displaySupportedUsecases(list) {
         const container = document.getElementById('usecaseList');
         if (!container) return;
         // dedupe by name
@@ -649,7 +771,7 @@
                 return;
             }
             const list = await res.json();
-            renderUsecases(list);
+            displaySupportedUsecases(list);
         } catch (err) {
             document.getElementById('usecasesStatus').textContent = 'Error loading usecases: ' + err;
         }
@@ -712,143 +834,743 @@
         return Object.prototype.hasOwnProperty.call(obj, key)
     }
 
-    function safeHasOwn(obj, key) { return Object.prototype.hasOwnProperty.call(obj, key) }
-    function findValueByKey(obj, key) { if (!obj || typeof obj !== 'object') return undefined; if (safeHasOwn(obj, key)) return obj[key]; for (const k in obj) { if (!safeHasOwn(obj, k)) continue; const v = obj[k]; if (typeof v === 'object') { const found = findValueByKey(v, key); if (found !== undefined) return found } } return undefined }
+    function findValueByKey(obj, key) {
+        if (!obj || typeof obj !== 'object') return undefined;
+        if (safeHasOwn(obj, key)) return obj[key];
+        for (const k in obj) {
+            if (!safeHasOwn(obj, k)) continue;
+            const v = obj[k];
+            if (typeof v === 'object') {
+                const found = findValueByKey(v, key);
+                if (found !== undefined) return found
+            }
+        }
+        return undefined
+    }
 
-    function findCmdType(obj) { const cmd = findValueByKey(obj, 'cmd'); if (!cmd) return ''; function findObjInArray(a) { if (!Array.isArray(a)) return null; for (const item of a) { if (!item) continue; if (typeof item === 'object' && !Array.isArray(item)) { for (const k in item) { if (Object.prototype.hasOwnProperty.call(item, k)) return k } } if (Array.isArray(item)) { const deeper = findObjInArray(item); if (deeper) return deeper } } return null } const t = findObjInArray(cmd); return t || '' }
+    function findCmdType(obj) {
+        const cmd = findValueByKey(obj, 'cmd');
+        if (!cmd) return '';
 
-    const parsedTraces = []; let parsedIdCounter = 1;
-    function addParsedTrace(entry) { entry.id = parsedIdCounter++; parsedTraces.unshift(entry); if (parsedTraces.length > 500) parsedTraces.pop(); renderParsedTraces(); }
-    function clearParsedTraces() { parsedTraces.length = 0; renderParsedTraces(); const detail = document.getElementById('traceDetail'); if (detail) { detail.textContent = 'Click an entry to view the full JSON.'; detail.style.display = 'none'; detail.style.height = ''; } const btn = document.getElementById('traceDetailClose'); if (btn) btn.style.display = 'none'; const prev = document.querySelectorAll('#parsedTracesList li.selected'); prev.forEach(p => p.classList.remove('selected')); }
+        function findObjInArray(a) {
+            if (!Array.isArray(a)) return null;
+            for (const item of a) {
+                if (!item) continue;
+                if (typeof item === 'object' && !Array.isArray(item)) {
+                    for (const k in item) {
+                        if (Object.prototype.hasOwnProperty.call(item, k)) return k
+                    }
+                }
+                if (Array.isArray(item)) {
+                    const deeper = findObjInArray(item);
+                    if (deeper) return deeper
+                }
+            }
+            return null
+        }
 
-    function renderParsedTraces() { const list = document.getElementById('parsedTracesList'); if (!list) return; list.innerHTML = ''; if (parsedTraces.length === 0) { document.getElementById('parsedTracesStatus').textContent = 'Waiting for traces...'; return } document.getElementById('parsedTracesStatus').textContent = ''; parsedTraces.forEach(pt => { const li = document.createElement('li'); li.id = 'pt-' + pt.id; li.dataset.ptId = pt.id; const ts = document.createElement('div'); ts.className = 'trace-ts'; ts.textContent = pt.ts || ''; const dir = document.createElement('div'); dir.className = (pt.direction === 'recv' ? 'dir-recv' : 'dir-send'); dir.textContent = (pt.direction || '').toUpperCase(); const meta = document.createElement('div'); meta.className = 'trace-meta'; meta.innerHTML = '<span style="color:var(--muted)">cmdClassifier:</span> ' + (pt.cmdClassifier || '-') + ' &nbsp; <span style="color:var(--muted)">type:</span> ' + (pt.cmdType || '-'); li.appendChild(ts); li.appendChild(dir); li.appendChild(meta); li.addEventListener('click', () => showTraceDetail(pt)); if (lastShownPT && lastShownPT.id === pt.id) li.classList.add('selected'); list.appendChild(li); }) }
+        const t = findObjInArray(cmd);
+        return t || ''
+    }
 
-    /* entities rendering (kept) */
+    const parsedTraces = [];
+    let parsedIdCounter = 1;
+
+    function addParsedTrace(entry) {
+        entry.id = parsedIdCounter++;
+        parsedTraces.unshift(entry);
+        if (parsedTraces.length > 500) parsedTraces.pop();
+        renderParsedTraces();
+    }
+
+    function clearParsedTraces() {
+        parsedTraces.length = 0;
+        renderParsedTraces();
+        const detail = document.getElementById('traceDetail');
+        if (detail) {
+            detail.textContent = 'Click an entry to view the full JSON.';
+            detail.style.display = 'none';
+        }
+        const btn = document.getElementById('traceDetailClose');
+        if (btn) btn.style.display = 'none';
+
+        // Entferne alle selektierten Listenelemente
+        try {
+            const sel = document.querySelectorAll('#parsedTracesList li.selected');
+            sel.forEach(el => el.classList.remove('selected'));
+        } catch (e) {
+        }
+        lastShownPT = null;
+    }
+
+    function renderParsedTraces() {
+        const list = document.getElementById('parsedTracesList');
+        if (!list) return;
+        list.innerHTML = '';
+        if (parsedTraces.length === 0) {
+            document.getElementById('parsedTracesStatus').textContent = 'Waiting for traces...';
+            return
+        }
+        document.getElementById('parsedTracesStatus').textContent = '';
+        // only show up to 10 visible items but keep list scrollable
+        parsedTraces.forEach(pt => {
+            const li = document.createElement('li');
+            li.id = 'pt-' + pt.id;
+            const ts = document.createElement('div');
+            ts.className = 'trace-ts';
+            ts.textContent = pt.ts || '';
+            const dir = document.createElement('div');
+            dir.className = (pt.direction === 'recv' ? 'dir-recv' : 'dir-send');
+            dir.textContent = (pt.direction || '').toUpperCase();
+            const meta = document.createElement('div');
+            meta.className = 'trace-meta';
+            meta.innerHTML = '<span style="color:var(--muted)">cmdClassifier:</span> ' + (pt.cmdClassifier || '-') + ' &nbsp; <span style="color:var(--muted)">type:</span> ' + (pt.cmdType || '-');
+            li.appendChild(ts);
+            li.appendChild(dir);
+            li.appendChild(meta);
+            li.addEventListener('click', () => showTraceDetail(pt));
+            list.appendChild(li);
+        })
+    }
+
+    /* --- Entities rendering (cascading list) --- */
+    // remember expanded state across renders: key = entityAddress + '::' + featureIndex
     const expandedStates = {};
-    function renderEntities(data) { const container = document.getElementById('entitiesList'); if (!container) return; const prevScroll = container ? container.scrollTop : 0; const prevExpanded = Object.assign({}, expandedStates); container.innerHTML = ''; if (!data || data.length === 0) { document.getElementById('entitiesStatus').textContent = 'No entities available'; return; } document.getElementById('entitiesStatus').textContent = ''; data.forEach((ent, entIndex) => { const li = document.createElement('li'); const entKey = String(ent.address || '') || ('ent-' + entIndex); const toggle = document.createElement('span'); toggle.className = 'tree-toggle'; toggle.textContent = '+'; const title = document.createElement('span'); title.className = 'entity-addr'; title.textContent = (ent.address || '') + ' '; const etype = document.createElement('span'); etype.style.color = 'var(--muted)'; etype.style.fontSize = '13px'; etype.textContent = (ent.entityType ? ('[' + ent.entityType + ']') : ''); li.appendChild(toggle); li.appendChild(title); li.appendChild(etype); const sub = document.createElement('div'); sub.className = 'sub'; sub.style.display = 'none'; if (Array.isArray(ent.features)) { ent.features.forEach((f, featIndex) => { const fdiv = document.createElement('div'); const fname = document.createElement('div'); fname.style.fontWeight = '600'; fname.textContent = (f.name || ''); const froles = document.createElement('div'); froles.style.color = 'var(--muted)'; froles.textContent = 'Roles: ' + (f.roles || ''); fdiv.appendChild(fname); fdiv.appendChild(froles); if (Array.isArray(f.operations) && f.operations.length > 0) { const opl = document.createElement('ul'); opl.style.margin = '6px 0 8px 12px'; opl.style.padding = '0 0 0 14px'; opl.style.listStyle = 'disc'; f.operations.forEach(op => { const oli = document.createElement('li'); const opKey = (op.op !== undefined && op.op !== null) ? String(op.op) : ''; const opName = (op.name !== undefined && op.name !== null) ? String(op.name) : ''; oli.textContent = (opKey && opName) ? opKey + ' — ' + opName : (opName || opKey); opl.appendChild(oli); }); fdiv.appendChild(opl); } const featKey = entKey + '::' + String(featIndex); if (prevExpanded[featKey]) { fdiv.style.display = 'block'; } sub.appendChild(fdiv); }); } li.appendChild(sub); const anyExpanded = Object.keys(prevExpanded).some(k => k.startsWith(entKey + '::')); if (anyExpanded) { sub.style.display = 'block'; toggle.textContent = '−'; } toggle.addEventListener('click', () => { const isOpen = sub.style.display !== 'none'; if (isOpen) { sub.style.display = 'none'; toggle.textContent = '+'; Object.keys(expandedStates).forEach(k => { if (k.startsWith(entKey + '::')) delete expandedStates[k]; }); } else { sub.style.display = 'block'; toggle.textContent = '−'; const featCount = (Array.isArray(ent.features) ? ent.features.length : 0); for (let i=0;i<featCount;i++) expandedStates[entKey + '::' + i] = true; } }); title.addEventListener('click', () => toggle.click()); container.appendChild(li); }); try { container.scrollTop = prevScroll; } catch(e){} }
 
-    async function loadEntities() { try { const res = await fetch('/api/entities'); if (!res.ok) { document.getElementById('entitiesStatus').textContent = 'Failed to load entities'; return; } const data = await res.json(); let arr = []; if (Array.isArray(data)) arr = data; else if (data && Array.isArray(data.entities)) arr = data.entities; renderEntities(arr); } catch (e) { document.getElementById('entitiesStatus').textContent = 'Error loading entities: ' + e } }
+    function renderEntities(data) {
+        const container = document.getElementById('entitiesList');
+        if (!container) return;
+        // preserve scroll and expanded state
+        const prevScroll = container ? container.scrollTop : 0;
+        const prevExpanded = Object.assign({}, expandedStates);
+        container.innerHTML = '';
+        if (!data || data.length === 0) {
+            document.getElementById('entitiesStatus').textContent = 'No entities available';
+            return;
+        }
+        document.getElementById('entitiesStatus').textContent = '';
+        data.forEach((ent, entIndex) => {
+            const li = document.createElement('li');
+            const entKey = String(ent.address || '') || ('ent-' + entIndex);
+            const toggle = document.createElement('span');
+            toggle.className = 'tree-toggle';
+            toggle.textContent = '+';
+            const title = document.createElement('span');
+            title.className = 'entity-addr';
+            title.textContent = (ent.address || '') + ' ';
+            const etype = document.createElement('span');
+            etype.style.color = 'var(--muted)';
+            etype.style.fontSize = '13px';
+            etype.textContent = (ent.entityType ? ('[' + ent.entityType + ']') : '');
+            li.appendChild(toggle);
+            li.appendChild(title);
+            li.appendChild(etype);
 
-    // trace detail helpers
-    function eebusJsonToJson(jsonStr) { if (typeof jsonStr !== 'string') jsonStr = String(jsonStr || ''); try { let s = jsonStr; s = s.replace(/\[\]/g,'{}'); s = s.replace(/\}\]/g,'}'); s = s.replace(/\},\{/g,','); s = s.replace(/\[\{/g,'{'); s = s.trim(); try { const parsed = JSON.parse(s); return JSON.stringify(parsed,null,2); } catch(_) { return simplePretty(s); } } catch(e) { return jsonStr } }
-    function simplePretty(s) { let out=''; let indent=0; const indentStr = ()=> '  '.repeat(indent); for (let i=0;i<s.length;i++){ const ch=s[i]; if (ch==='{'||ch==='['){ out+=ch+"\n"; indent++; out+=indentStr(); } else if (ch==='}'||ch===']'){ out+="\n"; indent=Math.max(0,indent-1); out+=indentStr()+ch; } else if (ch===','){ out+=ch+"\n"+indentStr(); } else out+=ch; } return out }
+            const sub = document.createElement('div');
+            sub.className = 'sub';
+            sub.style.display = 'none';
+            // features
+            if (Array.isArray(ent.features)) {
+                ent.features.forEach((f, featIndex) => {
+                    const fdiv = document.createElement('div');
+                    const fname = document.createElement('div');
+                    fname.style.fontWeight = '600';
+                    fname.textContent = (f.name || '');
+                    const froles = document.createElement('div');
+                    froles.style.color = 'var(--muted)';
+                    froles.textContent = 'Roles: ' + (f.roles || '');
+                    fdiv.appendChild(fname);
+                    fdiv.appendChild(froles);
+                    // operations
+                    if (Array.isArray(f.operations) && f.operations.length > 0) {
+                        const opl = document.createElement('ul');
+                        opl.style.margin = '6px 0 8px 12px';
+                        opl.style.padding = '0 0 0 14px';
+                        opl.style.listStyle = 'disc';
+                        f.operations.forEach(op => {
+                            const oli = document.createElement('li');
+                            const opKey = (op.op !== undefined && op.op !== null) ? String(op.op) : '';
+                            const opName = (op.name !== undefined && op.name !== null) ? String(op.name) : '';
+                            if (opKey && opName) {
+                                oli.textContent = opKey + ' — ' + opName;
+                            } else if (opName) {
+                                oli.textContent = opName;
+                            } else {
+                                oli.textContent = opKey;
+                            }
+                            opl.appendChild(oli);
+                        });
+                        fdiv.appendChild(opl);
+                    }
+                    // restore expanded state for this feature
+                    const featKey = entKey + '::' + String(featIndex);
+                    if (prevExpanded[featKey]) {
+                        fdiv.style.display = 'block';
+                    }
+                    sub.appendChild(fdiv);
+                });
+            }
+            li.appendChild(sub);
+            // restore toggled state if any feature is expanded
+            const anyExpanded = Object.keys(prevExpanded).some(k => k.startsWith(entKey + '::'));
+            if (anyExpanded) {
+                sub.style.display = 'block';
+                toggle.textContent = '−';
+            }
 
-    let lastShownPT=null;
-    function showTraceDetail(pt){ lastShownPT=pt; const detail=document.getElementById('traceDetail'); try{ const isRaw=document.getElementById('eebusJsonCheckbox') && document.getElementById('eebusJsonCheckbox').checked; let text=''; if (pt.rawJson){ const s=JSON.stringify(pt.rawJson); text = isRaw ? JSON.stringify(pt.rawJson,null,2) : eebusJsonToJson(s); } else text = pt.rawLine || ''; detail.textContent = text; } catch(e){ detail.textContent = pt.rawLine || '' }
-        const parsedPanel = document.getElementById('parsedPanel'); const spineContent = document.getElementById('spineContent'); const list = document.getElementById('parsedTracesList'); const closeBtn = document.getElementById('traceDetailClose'); try { const prev = document.querySelector('#parsedTracesList li.selected'); if (prev && prev.id !== ('pt-'+pt.id)) prev.classList.remove('selected'); const cur = document.getElementById('pt-'+pt.id); if (cur) cur.classList.add('selected'); } catch(e){}
-        if (detail && parsedPanel && spineContent && list){ detail.style.display='block'; const panelHeight = parsedPanel.getBoundingClientRect().height; const desired = Math.round(panelHeight*0.5); detail.style.height = desired+'px'; const spineRect = spineContent.getBoundingClientRect(); const traceDetailPanel = document.getElementById('traceDetailPanel'); const traceHeader = traceDetailPanel ? traceDetailPanel.querySelector('div') : null; const headerHeight = traceHeader ? Math.round(traceHeader.getBoundingClientRect().height) : 0; const otherTop = spineContent.querySelector('div'); const otherTopHeight = otherTop ? Math.round(otherTop.getBoundingClientRect().height) : 0; const availableForList = Math.max(80, Math.round(spineRect.height - desired - headerHeight - otherTopHeight - 8)); list.style.height = availableForList + 'px'; list.style.flex = '0 0 ' + availableForList + 'px'; if (closeBtn) closeBtn.style.display = 'inline-block'; detail.scrollTop = 0; } else { if (detail) detail.style.display = 'block'; if (closeBtn) closeBtn.style.display = 'inline-block'; } }
+            toggle.addEventListener('click', (e) => {
+                const isOpen = sub.style.display !== 'none';
+                if (isOpen) {
+                    sub.style.display = 'none';
+                    toggle.textContent = '+';
+                    // clear expanded flags for this entity
+                    Object.keys(expandedStates).forEach(k => {
+                        if (k.startsWith(entKey + '::')) delete expandedStates[k];
+                    });
+                } else {
+                    sub.style.display = 'block';
+                    toggle.textContent = '−';
+                    // mark all child features as expanded
+                    const featCount = (Array.isArray(ent.features) ? ent.features.length : 0);
+                    for (let i = 0; i < featCount; i++) {
+                        expandedStates[entKey + '::' + i] = true;
+                    }
+                }
+            });
+            // clicking title toggles as well
+            title.addEventListener('click', () => {
+                toggle.click();
+            });
+            container.appendChild(li);
+        });
+        // restore scroll position
+        try {
+            container.scrollTop = prevScroll;
+        } catch (e) {
+        }
+    }
 
-    const eebusCheckbox = document.getElementById('eebusJsonCheckbox'); if (eebusCheckbox) eebusCheckbox.addEventListener('change', ()=>{ if (lastShownPT) showTraceDetail(lastShownPT); });
-    const traceDetailCloseBtn = document.getElementById('traceDetailClose'); if (traceDetailCloseBtn) traceDetailCloseBtn.addEventListener('click', function(){ const detail = document.getElementById('traceDetail'); const list = document.getElementById('parsedTracesList'); if (detail){ detail.style.display='none'; detail.style.height=''; } if (this) this.style.display='none'; if (list){ list.style.height=''; list.style.flex='1 1 auto'; } });
-    const clearParsedBtn = document.getElementById('clearParsed'); if (clearParsedBtn) clearParsedBtn.addEventListener('click', clearParsedTraces);
+    // load entities from API (initial)
+    async function loadEntities() {
+        try {
+            const res = await fetch('/api/entities');
+            if (!res.ok) {
+                document.getElementById('entitiesStatus').textContent = 'Failed to load entities';
+                return;
+            }
+            const data = await res.json();
+            // server may respond with array or with {type:..., entities: [...]}
+            let arr = [];
+            if (Array.isArray(data)) arr = data;
+            else if (data && Array.isArray(data.entities)) arr = data.entities;
+            renderEntities(arr);
+        } catch (e) {
+            document.getElementById('entitiesStatus').textContent = 'Error loading entities: ' + e
+        }
+    }
 
-    // logs websocket (kept)
-    (function(){ const logsEl = document.getElementById('logs'); const logsBtn = document.getElementById('logsToBottomBtn'); const protocol = (location.protocol==='https:') ? 'wss:' : 'ws:'; const wsUrl = protocol + '//' + location.host + '/ws/logs'; let ws; let logsAutoScroll=true; function updateLogsButton(){ if (!logsBtn) return; logsBtn.style.display = logsAutoScroll ? 'none' : 'inline-block'; }
-        if (logsBtn) logsBtn.addEventListener('click', ()=>{ logsAutoScroll=true; try{ logsEl.scrollTop = logsEl.scrollHeight; } catch(e){} updateLogsButton(); });
-        if (logsEl) logsEl.addEventListener('scroll', ()=>{ const atBottom = (logsEl.scrollHeight - logsEl.scrollTop - logsEl.clientHeight) <= 8; logsAutoScroll = atBottom; updateLogsButton(); });
-        function connect(){ ws = new WebSocket(wsUrl); ws.addEventListener('open', ()=>{ if (logsEl) logsEl.textContent = '' }); ws.addEventListener('message', (ev)=>{ const line = (typeof ev.data === 'string') ? ev.data : JSON.stringify(ev.data); let parsed = null; try{ parsed = JSON.parse(line) } catch(e){ parsed = null } if (parsed && parsed.type === 'usecase'){ const name = parsed.name; const supported = !!parsed.supported; setUsecase(name, supported); return; } if (parsed && parsed.type === 'entities'){ const arr = parsed.entities || []; renderEntities(arr); return; } const isTrace = (typeof line === 'string') && (/TRACE\s*(Recv|Send)/i.test(line) || /Trace\s*(Recv|Send)/i.test(line)); if (isTrace){ const ts = extractTimestamp(line); const direction = extractDirection(line); const js = extractJsonString(line); if (js){ try{ const obj = JSON.parse(js); const cmdClassifier = findValueByKey(obj, 'cmdClassifier') || ''; const cmdType = findCmdType(obj) || ''; addParsedTrace({ ts: ts, direction: direction, cmdClassifier: cmdClassifier, cmdType: cmdType, rawJson: obj, rawLine: line }); return } catch(e){} } }
-            if (logsEl) { if (logsEl.textContent && logsEl.textContent.length>0) logsEl.textContent += '\n' + line; else logsEl.textContent = line } if (logsAutoScroll && logsEl) try{ logsEl.scrollTop = logsEl.scrollHeight } catch(e){}
-        }); ws.addEventListener('close', ()=>{ setTimeout(connect, 1000) }); ws.addEventListener('error', (e)=>{ console.error('ws error', e); try{ ws.close() } catch(_){} }); }
-        connect(); })();
+    // --- Trace detail helpers ---
+    function eebusJsonToJson(jsonStr) {
+        if (typeof jsonStr !== 'string') jsonStr = String(jsonStr || '');
+        try {
+            let s = jsonStr;
+            // Apply the simple transformations from the C++ routine
+            s = s.replace(/\[\]/g, '{}');
+            s = s.replace(/\}\]/g, '}');
+            s = s.replace(/\},\{/g, ',');
+            s = s.replace(/\[\{/g, '{');
+            s = s.trim();
 
-    // API write shortcut
-    async function apiWrite(payload){ try{ const res = await fetch('/api/write', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const txt = await res.text(); if (!res.ok) alert('Write failed: ' + txt); } catch(err){ alert('Request failed: ' + err); } }
+            // Try to parse the transformed string; if successful, pretty-print
+            try {
+                const parsed = JSON.parse(s);
+                return JSON.stringify(parsed, null, 2);
+            } catch (_) {
+                // Fallback: simple pretty printer for single-line JSON-like strings
+                return simplePretty(s);
+            }
+        } catch (e) {
+            return jsonStr;
+        }
+    }
 
-    // UI wiring + polling
-    document.addEventListener('DOMContentLoaded', ()=>{
+    function simplePretty(s) {
+        // Basic character-wise pretty printer that inserts newlines and indentation
+        let out = '';
+        let indent = 0;
+        const indentStr = () => '  '.repeat(indent);
+        for (let i = 0; i < s.length; i++) {
+            const ch = s[i];
+            if (ch === '{' || ch === '[') {
+                out += ch + '\n';
+                indent++;
+                out += indentStr();
+            } else if (ch === '}' || ch === ']') {
+                out += '\n';
+                indent = Math.max(0, indent - 1);
+                out += indentStr() + ch;
+            } else if (ch === ',') {
+                out += ch + '\n' + indentStr();
+            } else {
+                out += ch;
+            }
+        }
+        return out;
+    }
+
+    let lastShownPT = null;
+
+    function showTraceDetail(pt) {
+        // entferne vorherige Markierung
+        const prev = lastShownPT;
+        if (prev && prev.id) {
+            const prevEl = document.getElementById('pt-' + prev.id);
+            if (prevEl) prevEl.classList.remove('selected');
+        }
+
+        // setze neuen selection state
+        lastShownPT = pt;
+        const li = document.getElementById('pt-' + pt.id);
+        if (li) {
+            li.classList.add('selected');
+            try {
+                li.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'nearest'});
+            } catch (e) {
+            }
+        }
+
+        // existing detail rendering (unverändert; nur in Funktion erhalten)
+        const detail = document.getElementById('traceDetail');
+        try {
+            const isRaw = document.getElementById('eebusJsonCheckbox') && document.getElementById('eebusJsonCheckbox').checked;
+            let text = '';
+            if (pt.rawJson) {
+                const s = JSON.stringify(pt.rawJson);
+                text = isRaw ? JSON.stringify(pt.rawJson, null, 2) : eebusJsonToJson(s);
+            } else {
+                text = pt.rawLine || '';
+            }
+            detail.textContent = text;
+        } catch (e) {
+            detail.textContent = pt.rawLine || '';
+        }
+        detail.style.display = 'block';
+        const closeBtn = document.getElementById('traceDetailClose');
+        if (closeBtn) closeBtn.style.display = 'inline-block';
+        detail.scrollTop = 0;
+
+        // scroll the detail panel into view so user clearly sees the detail area
+        const panel = document.getElementById('traceDetailPanel');
+        if (panel) {
+            try {
+                panel.scrollIntoView({behavior: 'smooth', block: 'start'});
+            } catch (e) {
+            }
+        }
+    }
+
+    // Update displayed detail when checkbox changes
+    const eebusCheckbox = document.getElementById('eebusJsonCheckbox');
+    if (eebusCheckbox) {
+        eebusCheckbox.addEventListener('change', () => {
+            if (lastShownPT) showTraceDetail(lastShownPT);
+        });
+    }
+
+    const traceDetailCloseBtn = document.getElementById('traceDetailClose');
+    if (traceDetailCloseBtn) {
+        traceDetailCloseBtn.addEventListener('click', function () {
+            const detail = document.getElementById('traceDetail');
+            if (detail) detail.style.display = 'none';
+            this.style.display = 'none';
+        });
+    }
+
+    const clearParsedBtn = document.getElementById('clearParsed');
+    if (clearParsedBtn) {
+        clearParsedBtn.addEventListener('click', clearParsedTraces);
+    }
+
+    // WebSocket for logs and usecase updates
+    (function () {
+        const logsEl = document.getElementById('logs');
+        const logsBtn = document.getElementById('logsToBottomBtn');
+        const protocol = (location.protocol === 'https:') ? 'wss:' : 'ws:';
+        const wsUrl = protocol + '//' + location.host + '/ws/logs';
+        let ws;
+        // auto-scroll state: true means keep scrolling to newest messages
+        let logsAutoScroll = true;
+
+        function updateLogsButton() {
+            if (!logsBtn) return;
+            logsBtn.style.display = logsAutoScroll ? 'none' : 'inline-block';
+        }
+
+        // clicking the button forces scroll to bottom and re-enables auto-scroll
+        if (logsBtn) {
+            logsBtn.addEventListener('click', () => {
+                logsAutoScroll = true;
+                try {
+                    logsEl.scrollTop = logsEl.scrollHeight;
+                } catch (e) {
+                }
+                updateLogsButton();
+            });
+        }
+
+        // detect user scroll - if user scrolls up, disable auto-scroll; if they scroll to bottom, enable it
+        if (logsEl) {
+            logsEl.addEventListener('scroll', () => {
+                const atBottom = (logsEl.scrollHeight - logsEl.scrollTop - logsEl.clientHeight) <= 8;
+                logsAutoScroll = atBottom;
+                updateLogsButton();
+            });
+        }
+
+        function connect() {
+            ws = new WebSocket(wsUrl);
+            ws.addEventListener('open', () => {
+                if (logsEl) logsEl.textContent = ''
+            });
+            ws.addEventListener('message', (ev) => {
+                const line = (typeof ev.data === 'string') ? ev.data : JSON.stringify(ev.data);
+                // First try: is this a structured usecase JSON message we previously used?
+                let parsed = null;
+                try {
+                    parsed = JSON.parse(line)
+                } catch (e) {
+                    parsed = null
+                }
+                if (parsed && parsed.type === 'usecase') {
+                    const name = parsed.name;
+                    const supported = !!parsed.supported;
+                    setUsecase(name, supported);
+                    return;
+                }
+                if (parsed && parsed.type === 'entities') {
+                    const arr = parsed.entities || [];
+                    renderEntities(arr);
+                    return;
+                }
+
+                // Detect TRACE Send/Recv lines and try to parse JSON inside them
+                const isTrace = (typeof line === 'string') && (/TRACE\s*(Recv|Send)/i.test(line) || /Trace\s*(Recv|Send)/i.test(line));
+                if (isTrace) {
+                    const ts = extractTimestamp(line);
+                    const direction = extractDirection(line);
+                    const js = extractJsonString(line);
+                    if (js) {
+                        try {
+                            const obj = JSON.parse(js);
+                            const cmdClassifier = findValueByKey(obj, 'cmdClassifier') || '';
+                            const cmdType = findCmdType(obj) || '';
+                            addParsedTrace({
+                                ts: ts,
+                                direction: direction,
+                                cmdClassifier: cmdClassifier,
+                                cmdType: cmdType,
+                                rawJson: obj,
+                                rawLine: line
+                            });
+                            return
+                        } catch (e) { /* fallthrough to log */
+                        }
+                    }
+                }
+
+                // fallback: treat as plain log line
+                if (logsEl) {
+                    if (logsEl.textContent && logsEl.textContent.length > 0) {
+                        logsEl.textContent += '\n' + line
+                    } else {
+                        logsEl.textContent = line
+                    }
+                }
+                // only auto-scroll when enabled
+                if (logsAutoScroll && logsEl) {
+                    try {
+                        logsEl.scrollTop = logsEl.scrollHeight;
+                    } catch (e) {
+                    }
+                }
+            });
+            ws.addEventListener('close', () => {
+                setTimeout(connect, 1000)
+            });
+            ws.addEventListener('error', (e) => {
+                console.error('ws error', e);
+                try {
+                    ws.close()
+                } catch (_) {
+                }
+            });
+        }
+
+        connect();
+    })();
+
+    // Build API payloads for new endpoints
+    async function apiWrite(payload) {
+        try {
+            const res = await fetch('/api/write', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(payload)
+            });
+            const txt = await res.text();
+            if (!res.ok) {
+                alert('Write failed: ' + txt)
+            }
+        } catch (err) {
+            alert('Request failed: ' + err)
+        }
+    }
+
+    // wire up control buttons and polling of usecaseData
+    document.addEventListener('DOMContentLoaded', () => {
+        // sanitize duration inputs to integers where required
         intInputSanitize(document.getElementById('writeLimitDurationSec'));
         intInputSanitize(document.getElementById('writeFailsafeDurationMin'));
-        const sendWriteLimitBtn = document.getElementById('sendWriteLimit'); if (sendWriteLimitBtn) sendWriteLimitBtn.addEventListener('click', ()=>{ const val = parseFloat((document.getElementById('writeLimitValue')||{}).value) || 0; const dur = parseInt((document.getElementById('writeLimitDurationSec')||{}).value,10) || 0; const active = !!(document.getElementById('writeLimitActive') && document.getElementById('writeLimitActive').checked); apiWrite({cmd:'writeLPCConsumptionLimit', durationSeconds: dur, value: val, isActive: active}); });
-        const sendFailsafePower = document.getElementById('sendWriteFailsafePower'); if (sendFailsafePower) sendFailsafePower.addEventListener('click', ()=>{ const p = parseFloat((document.getElementById('writeFailsafePower')||{}).value) || 0; apiWrite({cmd:'writeLPCFailsafeValue', failsafePower: p}); });
-        const sendFailsafeDur = document.getElementById('sendWriteFailsafeDuration'); if (sendFailsafeDur) sendFailsafeDur.addEventListener('click', ()=>{ const m = parseInt((document.getElementById('writeFailsafeDurationMin')||{}).value,10) || 0; apiWrite({cmd:'writeLPCFailsafeDuration', durationMinutes: m}); });
 
-        // initialize displays
-        fetchUsecaseData(); loadUsecases(); loadEntities(); setInterval(fetchUsecaseData, 2000);
+        const sendWriteLimitBtn = document.getElementById('sendWriteLimit');
+        if (sendWriteLimitBtn) {
+            sendWriteLimitBtn.addEventListener('click', () => {
+                const val = parseFloat((document.getElementById('writeLimitValue') || {}).value) || 0;
+                const dur = parseInt((document.getElementById('writeLimitDurationSec') || {}).value, 10) || 0;
+                const active = !!(document.getElementById('writeLimitActive') && document.getElementById('writeLimitActive').checked);
+                apiWrite({cmd: 'writeLPCConsumptionLimit', durationSeconds: dur, value: val, isActive: active});
+            });
+        }
+
+        const sendFailsafePower = document.getElementById('sendWriteFailsafePower');
+        if (sendFailsafePower) {
+            sendFailsafePower.addEventListener('click', () => {
+                const p = parseFloat((document.getElementById('writeFailsafePower') || {}).value) || 0;
+                apiWrite({cmd: 'writeLPCFailsafeValue', failsafePower: p});
+            });
+        }
+
+        const sendFailsafeDur = document.getElementById('sendWriteFailsafeDuration');
+        if (sendFailsafeDur) {
+            sendFailsafeDur.addEventListener('click', () => {
+                const m = parseInt((document.getElementById('writeFailsafeDurationMin') || {}).value, 10) || 0;
+                apiWrite({cmd: 'writeLPCFailsafeDuration', durationMinutes: m});
+            });
+        }
+
+        // initial poll
+        fetchUsecaseData();
+        loadUsecases();
+        loadEntities();
+
+        // poll periodically for usecaseData so frontend shows latest values
+        setInterval(fetchUsecaseData, 2000);
     });
 
+        async function fetchUsecaseData() {
+            try {
+                const res = await fetch('/api/usecasedata');
+                if (!res.ok) return;
+                const d = await res.json();
+                /*
+                // update LPC
+               const lpcVal = (d.lpcLimitValue !== undefined) ? d.lpcLimitValue : '-';
+                document.getElementById('lpcLimitValue').textContent = lpcVal;
+                document.getElementById('lpcLimitDur').textContent = (d.lpcLimitDurationSec !== undefined) ? d.lpcLimitDurationSec : '-';
+                document.getElementById('lpcLimitActive').textContent = (d.lpcLimitActive !== undefined) ? (d.lpcLimitActive ? 'yes' : 'no') : '-';
+                document.getElementById('failsafePower').textContent = (d.lpcFailsafePower !== undefined) ? d.lpcFailsafePower : '-';
+                document.getElementById('failsafeDuration').textContent = (d.lpcFailsafeDurationMin !== undefined) ? d.lpcFailsafeDurationMin : '-';
+                // update LPP explicit fields only when supported
+                if (lppSupported) {
+                    const setText = (id, v) => {
+                        const el = document.getElementById(id);
+                        if (el) el.textContent = (v !== undefined ? v : '-');
+                    };
+                    setText('lppFailsafeValue', d.lppFailsafeValue);
+                    setText('lppFailsafeDur', d.lppFailsafeDurationSec);
+                    setText('lppLimitValue', d.lppLimitValue);
+                    setText('lppLimitDur', d.lppLimitDurationSec);
+                    setText('lppLimitActive', (d.lppLimitActive !== undefined) ? (d.lppLimitActive ? 'yes' : 'no') : '-');
+                }*/
+        } catch (e) {
+            // ignore
+        }
+    }
+
+
+    // initialize displays
+    fetchUsecaseData();
+    loadUsecases();
+    loadEntities();
+    setInterval(fetchUsecaseData, 2000);
+
+
     // display flags for features
-    let lppSupported=false, lpcSupported=false, evseccSupported=false, evccSupported=false;
-    function updateLPPDisplay(s){ lppSupported=s; const c=document.getElementById('lppDisplay'), d=document.getElementById('lppDisable'); if (c && d){ if (s){ c.style.display='flex'; d.style.display='none' } else { c.style.display='none'; d.style.display='flex' } } }
-    function updateLPCDisplay(s){ lpcSupported=s; const c=document.getElementById('lpcDisplay'), d=document.getElementById('lpcDisable'); if (c && d){ if (s){ c.style.display='flex'; d.style.display='none' } else { c.style.display='none'; d.style.display='flex' } } }
-    function updateEVSECCDisplay(s){ evseccSupported=s; const c=document.getElementById('evseccDisplay'), d=document.getElementById('evseccDisable'); if (c && d){ if (s){ c.style.display='flex'; d.style.display='none' } else { c.style.display='none'; d.style.display='flex' } } }
-    function updateEVCCDisplay(s){ evccSupported=s; const c=document.getElementById('evccDisplay'), d=document.getElementById('evccDisable'); if (c && d){ if (s){ c.style.display='flex'; d.style.display='none' } else { c.style.display='none'; d.style.display='flex' } } }
+    let lppSupported = false, lpcSupported = false, evseccSupported = false, evccSupported = false;
+
+    function updateLPPDisplay(s) {
+        lppSupported = s;
+        const c = document.getElementById('lppDisplay'), d = document.getElementById('lppDisable');
+        if (c && d) {
+            if (s) {
+                c.style.display = 'flex';
+                d.style.display = 'none'
+            } else {
+                c.style.display = 'none';
+                d.style.display = 'flex'
+            }
+        }
+    }
+
+
+    function updateEVCCDisplay(s) {
+        evccSupported = s;
+        const c = document.getElementById('evccDisplay'), d = document.getElementById('evccDisable');
+        if (c && d) {
+            if (s) {
+                c.style.display = 'flex';
+                d.style.display = 'none'
+            } else {
+                c.style.display = 'none';
+                d.style.display = 'flex'
+            }
+        }
+    }
+
+    function updateLPCDisplay(s) {
+        lpcSupported = s;
+        const c = document.getElementById('lpcDisplay'), d = document.getElementById('lpcDisable');
+        if (c && d) {
+            if (s) {
+                c.style.display = 'flex';
+                d.style.display = 'none'
+            } else {
+                c.style.display = 'none';
+                d.style.display = 'flex'
+            }
+        }
+    }
+
+    function updateEVSECCDisplay(s) {
+        evseccSupported = s;
+        const c = document.getElementById('evseccDisplay'), d = document.getElementById('evseccDisable');
+        if (c && d) {
+            if (s) {
+                c.style.display = 'flex';
+                d.style.display = 'none'
+            } else {
+                c.style.display = 'none';
+                d.style.display = 'flex'
+            }
+        }
+    }
+
 
     const originalSetUsecase = setUsecase;
-    setUsecase = function(name,supported){ originalSetUsecase(name,supported); try{ const n=String(name||'').trim().toLowerCase(); if (n==='lpp') updateLPPDisplay(supported); else if (n==='lpc') updateLPCDisplay(supported); else if (n==='evsecc') updateEVSECCDisplay(supported); else if (n==='evcc') updateEVCCDisplay(supported); } catch(e){} }
-
-    // fetch and update usecase data - setManufacturer keeps visibility and updates values
-    async function fetchUsecaseData(){ try{ const res = await fetch('/api/usecasedata'); if (!res.ok) return; const d = await res.json(); const fallback = v => (v!==undefined ? v : '-'); const setText = (id,v) => { const el=document.getElementById(id); if (el) el.textContent = fallback(v); };
-
-        function setManufacturer(id, data){ const el = document.getElementById(id); if (!el) return; const fb = v => (v!==undefined && v!==null ? v : '-'); const buildDetailsHtml = (dd) => (
-            `<div class="data-container"><div class="data-label">Device Name</div><div class="data-value">${fb(dd.DeviceName)}</div></div>` +
-            `<div class="data-container"><div class="data-label">Device Code</div><div class="data-value">${fb(dd.DeviceCode)}</div></div>` +
-            `<div class="data-container"><div class="data-label">Serial Number</div><div class="data-value">${fb(dd.SerialNumber)}</div></div>` +
-            `<div class="data-container"><div class="data-label">Software Revision</div><div class="data-value">${fb(dd.SoftwareRevision)}</div></div>` +
-            `<div class="data-container"><div class="data-label">Hardware Revision</div><div class="data-value">${fb(dd.HardwareRevision)}</div></div>` +
-            `<div class="data-container"><div class="data-label">Vendor Name</div><div class="data-value">${fb(dd.VendorName)}</div></div>` +
-            `<div class="data-container"><div class="data-label">Vendor Code</div><div class="data-value">${fb(dd.VendorCode)}</div></div>` +
-            `<div class="data-container"><div class="data-label">Brand Name</div><div class="data-value">${fb(dd.BrandName)}</div></div>` +
-            `<div class="data-container"><div class="data-label">Power Source</div><div class="data-value">${fb(dd.PowerSource)}</div></div>` +
-            `<div class="data-container"><div class="data-label">Manufacturer Node ID</div><div class="data-value">${fb(dd.ManufacturerNodeIdentification)}</div></div>` +
-            `<div class="data-container"><div class="data-label">Manufacturer Label</div><div class="data-value">${fb(dd.ManufacturerLabel)}</div></div>` +
-            `<div class="data-container"><div class="data-label">Manufacturer Description</div><div class="data-value">${fb(dd.ManufacturerDescription)}</div></div>`
-        );
-
-        // if no data -> show '-' but preserve wrapper state
-        if (data === undefined || data === null){ const existing = el.querySelector('.manufacturer-wrapper'); if (existing){ const details = existing.querySelector('.manufacturer-details'); if (details){ details.innerHTML = `<div class="data-value">-</div>`; // recalc
-                    if (typeof updateManufacturerDetailsMaxHeight === 'function') updateManufacturerDetailsMaxHeight();
-                    return; } } el.textContent = '-'; return; }
-
-        const detailsHtml = buildDetailsHtml(data);
-        const existingWrapper = el.querySelector('.manufacturer-wrapper');
-        if (existingWrapper){ const details = existingWrapper.querySelector('.manufacturer-details'); if (details){ details.innerHTML = detailsHtml; // recalc
-                    if (typeof updateManufacturerDetailsMaxHeight === 'function') updateManufacturerDetailsMaxHeight();
-                    return; } }
-
-        // create wrapper
-        el.innerHTML = '';
-        const wrapper = document.createElement('div'); wrapper.className = 'manufacturer-wrapper';
-        const btn = document.createElement('button'); btn.type='button'; btn.className='secondary'; btn.textContent='Show details'; btn.setAttribute('aria-expanded','false');
-        const details = document.createElement('div'); details.className='manufacturer-details'; details.style.display='none'; details.innerHTML = detailsHtml;
-        btn.addEventListener('click', ()=>{ const isOpen = details.style.display !== 'none'; if (isOpen){ details.style.display='none'; btn.textContent='Show details'; btn.setAttribute('aria-expanded','false'); } else { details.style.display='flex'; btn.textContent='Hide details'; btn.setAttribute('aria-expanded','true'); // recalc after showing
-                    if (typeof updateManufacturerDetailsMaxHeight === 'function') updateManufacturerDetailsMaxHeight(); } });
-        wrapper.appendChild(btn); wrapper.appendChild(details); el.appendChild(wrapper);
-    }
-
-        // end of setManufacturer helper
-        // (previously this function also updated various UI fields - that logic was moved/kept elsewhere)
-        // close try / catch and function
-    } catch (e) {
-        /* ignore */
-    }
-}
-
-// Update max-height of all manufacturer-details so they never exceed the left column's visible height.
-    function updateManufacturerDetailsMaxHeight() {
+    setUsecase = function (name, supported) {
+        originalSetUsecase(name, supported);
         try {
-            const left = document.getElementById('leftColumn');
-            if (!left) return;
-            const leftRect = left.getBoundingClientRect();
-            // For each wrapper, compute remaining space from wrapper top to bottom of left column
-            document.querySelectorAll('.manufacturer-wrapper').forEach(wrapper => {
-                const details = wrapper.querySelector('.manufacturer-details');
-                if (!details) return;
-                // wrapper may be deeper; compute offset from left column top
-                const wrapperRect = wrapper.getBoundingClientRect();
-                const offsetTop = Math.max(0, wrapperRect.top - leftRect.top);
-                // available height inside left column below wrapper top
-                let available = Math.floor(leftRect.height - offsetTop - 12); // 12px padding allowance
-                if (available < 40) available = 40;
-                details.style.maxHeight = available + 'px';
-                details.style.overflow = 'auto';
-            });
-        } catch (e) { /* ignore */ }
+            if (String(name || '').trim().toLowerCase() === 'lpp') {
+                updateLPPDisplay(supported);
+            } else if (String(name || '').trim().toLowerCase() === 'lpc') {
+                updateLPCDisplay(supported);
+            } else if (String(name || '').trim().toLowerCase() === 'evsecc') {
+                updateEVSECCDisplay(supported);
+            } else if (String(name || '').trim().toLowerCase() === 'evcc') {
+                updateEVCCDisplay(supported);
+            }
+        } catch (e) {
+        }
     }
 
-    // Recalculate on window resize and after pointerup (end of splitter drag)
-    window.addEventListener('resize', () => { updateManufacturerDetailsMaxHeight(); });
-    document.addEventListener('pointerup', () => { setTimeout(updateManufacturerDetailsMaxHeight, 50); });
+    // initialize default (hidden) state until usecases loaded
+    document.addEventListener('DOMContentLoaded', () => updateLPPDisplay(false));
+    document.addEventListener('DOMContentLoaded', () => updateLPCDisplay(false));
 
+    // adjust fetchUsecaseData to only update LPP fields when supported
+    const originalFetchLPP = fetchUsecaseData;
+    fetchUsecaseData = async function () {
+        try {
+            const res = await fetch('/api/usecasedata');
+            if (!res.ok) return;
+            const d = await res.json();
+            const fallback = v => (v !== undefined ? v : '-');
+
+            const setText = (id, v) => {
+                console.log('Updating %s to %s', id, v);
+                const el = document.getElementById(id);
+                if (!el) return;
+                const newText = String(fallback(v));
+                if (el.textContent !== newText) {
+                    el.textContent = newText;
+                    flashElement(el);
+                } else {
+                    el.textContent = newText;
+                }
+            };
+            const setManufacturer = (id, data) => {
+                const el = document.getElementById(id);
+                if (el && data !== undefined) {
+                    const newHtml = `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Device Name</div><div style="font-weight:600">${fallback(data.DeviceName)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Device Code</div><div style="font-weight:600">${fallback(data.DeviceCode)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Serial Number</div><div style="font-weight:600">${fallback(data.SerialNumber)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Software Revision</div><div style="font-weight:600">${fallback(data.SoftwareRevision)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Hardware Revision</div><div style="font-weight:600">${fallback(data.HardwareRevision)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Vendor Name</div><div style="font-weight:600">${fallback(data.VendorName)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Vendor Code</div><div style="font-weight:600">${fallback(data.VendorCode)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Brand Name</div><div style="font-weight:600">${fallback(data.BrandName)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Power Source</div><div style="font-weight:600">${fallback(data.PowerSource)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Manufacturer Node ID</div><div style="font-weight:600">${fallback(data.ManufacturerNodeIdentification)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Manufacturer Label</div><div style="font-weight:600">${fallback(data.ManufacturerLabel)}</div></div>\n` +
+                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Manufacturer Description</div><div style="font-weight:600">${fallback(data.ManufacturerDescription)}</div></div>`;
+                    if (el.innerHTML !== newHtml) {
+                        el.innerHTML = newHtml;
+                        flashElement(el);
+                    } else {
+                        el.innerHTML = newHtml;
+                    }
+                }
+            }
+            // update LPC
+            if (lpcSupported) {
+                setText('lpcLimitValue', d.lpcLimitValue);
+                setText('lpcLimitDur', d.lpcLimitDurSeconds);
+                setText('lpcLimitActive', d.lpcLimitActive);
+                setText('lpcFailsafePower', d.lpcFailsafePower);
+                setText('lpcFailsafeDuration', d.lpcFailsafeDurMinutes);
+                setText('lpcMaxNominalPower', d.lpcConsumptionLimitNominalMax)
+                setText('lpcHeartbeat', d.lpcHeartbeatOk)
+                setText('lpcHeartbeatTimestamp', d.lpcHeartbeatTimestamp)
+            }
+            if (lppSupported) {
+                // update LPP explicit fields only when supported
+                setText('lppFailsafeValue', d.lppFailsafeValue);
+                setText('lppFailsafeDur', d.lppFailsafeDurMinutes);
+                setText('lppLimitValue', d.lppLimitValue);
+                setText('lppLimitDur', d.lppLimitDurationSeconds);
+                setText('lppLimitActive', (d.lppLimitActive !== undefined) ? (d.lppLimitActive ? 'yes' : 'no') : '-');
+            }
+            if (evseccSupported) {
+                setManufacturer('evseccManufacturer', d.evseccManufacturerData);
+                setText('evseccOperatingState', d.evseccOperatingState);
+                setText('evseccErrorMessage', d.evseccOperatingStateDescription);
+            }
+            if (evccSupported) {
+                setManufacturer('evccManufacturer', d.evccManufacturerData);
+                setText('evccEvConnected', d.evccEvConnected);
+                setText('evccCommStandard', d.evccCommunicationStandard);
+                setText('evccAsymmetricCharging', d.evccAsymmetricChargingSupport);
+                setText('evccChargingLimitsMin', d.evccLimitMinimum);
+                setText('evccChargingLimitsMax', d.evccLimitMaximum);
+                setText('evccChargingLimitsStandy', d.evccLimitStandby);
+                setText('evccSleepMode', d.evccSleepMode);
+                setText('evccIdentificationType', d.evccIdentifications[0].ValueType);
+                setText('evccIdentificationValue', d.evccIdentifications[0].Value);
+            }
+        } catch (e) {
+            // ignore
+        }
+    }
 </script>
 </body>
 </html>
