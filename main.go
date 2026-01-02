@@ -105,6 +105,11 @@ type usecaseData struct {
 	EvccIdentifications           []ucapi.IdentificationItem `json:"evccIdentifications,omitempty"`
 	EvccSleepMode                 bool                       `json:"evccSleepMode"`
 	EvccEvConnected               bool                       `json:"evccEvConnected"`
+	// EVCEM usecase data
+	EvcemCurrentPerPhase []float64 `json:"evcemCurrentPerPhase,omitempty"`
+	EvcemPhasesConnected uint      `json:"evcemPhasesConnected,omitempty"`
+	EvcemEnergyCharged   float64   `json:"evcemEnergyCharged,omitempty"`
+	EvcemPowerPerPhase   []float64 `json:"evcemPowerPerPhase,omitempty"`
 }
 
 type hems struct {
@@ -257,10 +262,11 @@ func (h *hems) run() {
 	h.setUsecaseSupported("LPP", false)
 
 	// MPC
-	//h.ucmampc = mampc.NewMPC(localEntity, h.HandleMaMpc)
-	//h.myService.AddUseCase(h.ucmampc)
-	//h.setUsecaseSupported("MPC", false)
-
+	/*
+		h.ucmampc = mampc.NewMPC(localEntity, h.HandleMaMpc)
+		h.myService.AddUseCase(h.ucmampc)
+		h.setUsecaseSupported("MPC", false)
+	*/
 	if len(remoteSki) == 0 {
 		os.Exit(0)
 	}
@@ -425,8 +431,39 @@ func (h *hems) HandleEgEvcc(ski string, device spineapi.DeviceRemoteInterface, e
 // HandleEgEvcem Energy Guard EVCEM Handler
 func (h *hems) HandleEgEvcem(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("EgEVCEM Event: ", event)
-	if event == cemevcem.UseCaseSupportUpdate {
+	switch event {
+	case cemevcem.UseCaseSupportUpdate:
 		h.setUsecaseSupported("EVCEM", true)
+	case cemevcem.DataUpdateCurrentPerPhase:
+		currentArray, err := h.uccemevcem.CurrentPerPhase(entity)
+		if err != nil {
+			fmt.Println("Error getting CurrentPerPhase:", err)
+		} else {
+			fmt.Println("CurrentPerPhase: ", currentArray)
+			h.usecaseData.EvcemCurrentPerPhase = currentArray
+		}
+	case cemevcem.DataUpdatePhasesConnected:
+		phasesConnected, err := h.uccemevcem.PhasesConnected(entity)
+		if err != nil {
+			fmt.Println("Error getting PhasesConnected:", err)
+		} else {
+			h.usecaseData.EvcemPhasesConnected = phasesConnected
+		}
+	case cemevcem.DataUpdateEnergyCharged:
+		energyCharged, err := h.uccemevcem.EnergyCharged(entity)
+		if err != nil {
+			fmt.Println("Error getting EnergyCharged:", err)
+		} else {
+			h.usecaseData.EvcemEnergyCharged = energyCharged
+		}
+	case cemevcem.DataUpdatePowerPerPhase:
+		powerPerPhaseArray, err := h.uccemevcem.PowerPerPhase(entity)
+		if err != nil {
+			fmt.Println("Error getting PowerPerPhase:", err)
+		} else {
+			fmt.Println("PowerPerPhase: ", powerPerPhaseArray)
+			h.usecaseData.EvcemPowerPerPhase = powerPerPhaseArray
+		}
 	}
 	h.updateEntitiesFromDevice(device)
 }
@@ -469,14 +506,15 @@ func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, e
 }
 
 // HandleMaMpc MaMPC Handler
-/*func (h *hems) HandleMaMpc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
+/*
+func (h *hems) HandleMaMpc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("MaMpc Event: ", event)
 	if event == mampc.UseCaseSupportUpdate {
 		h.setUsecaseSupported("MPC", true)
 	}
 	h.updateEntitiesFromDevice(device)
-}*/
-
+}
+*/
 // Write Functions
 
 func (h *hems) WriteLPCConsumptionLimit(durationSeconds int64, value float64, active bool) error {

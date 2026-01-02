@@ -418,7 +418,7 @@
         }
 
         .flash-change {
-            animation: flash-bg 10000ms ease-out;
+            animation: flash-bg 3s ease-out;
             border-radius: 6px; /* optional, passt zu list items */
         }
     </style>
@@ -499,7 +499,7 @@
                         <h5>Scenario 4 - Constraints</h5>
                         <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
                             <div class="data-container">
-                                <div class="data-label">Maximum possible Power Consumption</div>
+                                <div class="data-label">Maximum possible Power Consumption (W)</div>
                                 <div id="lpcMaxNominalPower" class="data-value">-</div>
                             </div>
                         </div>
@@ -594,21 +594,44 @@
                         </div>
                         <h5>Scenario 6 - EV sends charging power limits</h5>
                         <div class="data-container">
-                            <div class="data-label">Minimum Charging Power</div>
+                            <div class="data-label">Minimum Charging Power (W)</div>
                             <div id="evccChargingLimitsMin" class="data-value">-</div>
                         </div>
                         <div class="data-container">
-                            <div class="data-label">Maximum Charging Power</div>
+                            <div class="data-label">Maximum Charging Power (W)</div>
                             <div id="evccChargingLimitsMax" class="data-value">-</div>
                         </div>
                         <div class="data-container">
-                            <div class="data-label">Standby Charging Power</div>
+                            <div class="data-label">Standby Charging Power (W)</div>
                             <div id="evccChargingLimitsStandy" class="data-value">-</div>
                         </div>
                         <h5>Scenario 7 - EV sleep mode</h5>
                         <div class="data-container">
                             <div class="data-label">EV Sleep Mode active</div>
                             <div id="evccSleepMode" class="data-value">-</div>
+                        </div>
+                    </div>
+                    <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                    <!-- EVCEM-->
+                    <div class="usecase-label">EVCEM</div>
+                    <div id="evcemDisable" style="color:var(--muted);font-weight:600; display:flex;">not supported
+                    </div>
+                    <div id="evcemDisplay" style="display:none;gap:8px;flex-wrap:wrap;align-items:center">
+                        <h5>Scenario 1 - Measure EV Charging current</h5>
+                        <div class="data-container">
+                            <div class="data-label">Charging Current per Phase (A)</div>
+                            <div id="evcemChargingCurrent" class="data-value">-</div>
+                        </div>
+                        <h5>Scenario 2 - Measure EV charging Power</h5>
+                        <div class="data-container">
+                            <div class="data-label">Charging Power per Phase (W)</div>
+                            <div id="evcemChargingPower" class="data-value">-</div>
+                        </div>
+                        <h5>Scenario 3 - Measure EV charging energy</h5>
+                        <div class="data-container">
+                            <div class="data-label">Energy Charged (Wh)</div>
+                            <div id="evcemChargedEnergy" class="data-value">-</div>
                         </div>
                     </div>
                     <div style="height:1px;background:grey;margin:6px 0"></div>
@@ -1367,31 +1390,31 @@
         setInterval(fetchUsecaseData, 2000);
     });
 
-        async function fetchUsecaseData() {
-            try {
-                const res = await fetch('/api/usecasedata');
-                if (!res.ok) return;
-                const d = await res.json();
-                /*
-                // update LPC
-               const lpcVal = (d.lpcLimitValue !== undefined) ? d.lpcLimitValue : '-';
-                document.getElementById('lpcLimitValue').textContent = lpcVal;
-                document.getElementById('lpcLimitDur').textContent = (d.lpcLimitDurationSec !== undefined) ? d.lpcLimitDurationSec : '-';
-                document.getElementById('lpcLimitActive').textContent = (d.lpcLimitActive !== undefined) ? (d.lpcLimitActive ? 'yes' : 'no') : '-';
-                document.getElementById('failsafePower').textContent = (d.lpcFailsafePower !== undefined) ? d.lpcFailsafePower : '-';
-                document.getElementById('failsafeDuration').textContent = (d.lpcFailsafeDurationMin !== undefined) ? d.lpcFailsafeDurationMin : '-';
-                // update LPP explicit fields only when supported
-                if (lppSupported) {
-                    const setText = (id, v) => {
-                        const el = document.getElementById(id);
-                        if (el) el.textContent = (v !== undefined ? v : '-');
-                    };
-                    setText('lppFailsafeValue', d.lppFailsafeValue);
-                    setText('lppFailsafeDur', d.lppFailsafeDurationSec);
-                    setText('lppLimitValue', d.lppLimitValue);
-                    setText('lppLimitDur', d.lppLimitDurationSec);
-                    setText('lppLimitActive', (d.lppLimitActive !== undefined) ? (d.lppLimitActive ? 'yes' : 'no') : '-');
-                }*/
+    async function fetchUsecaseData() {
+        try {
+            const res = await fetch('/api/usecasedata');
+            if (!res.ok) return;
+            const d = await res.json();
+            /*
+            // update LPC
+           const lpcVal = (d.lpcLimitValue !== undefined) ? d.lpcLimitValue : '-';
+            document.getElementById('lpcLimitValue').textContent = lpcVal;
+            document.getElementById('lpcLimitDur').textContent = (d.lpcLimitDurationSec !== undefined) ? d.lpcLimitDurationSec : '-';
+            document.getElementById('lpcLimitActive').textContent = (d.lpcLimitActive !== undefined) ? (d.lpcLimitActive ? 'yes' : 'no') : '-';
+            document.getElementById('failsafePower').textContent = (d.lpcFailsafePower !== undefined) ? d.lpcFailsafePower : '-';
+            document.getElementById('failsafeDuration').textContent = (d.lpcFailsafeDurationMin !== undefined) ? d.lpcFailsafeDurationMin : '-';
+            // update LPP explicit fields only when supported
+            if (lppSupported) {
+                const setText = (id, v) => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = (v !== undefined ? v : '-');
+                };
+                setText('lppFailsafeValue', d.lppFailsafeValue);
+                setText('lppFailsafeDur', d.lppFailsafeDurationSec);
+                setText('lppLimitValue', d.lppLimitValue);
+                setText('lppLimitDur', d.lppLimitDurationSec);
+                setText('lppLimitActive', (d.lppLimitActive !== undefined) ? (d.lppLimitActive ? 'yes' : 'no') : '-');
+            }*/
         } catch (e) {
             // ignore
         }
@@ -1406,7 +1429,8 @@
 
 
     // display flags for features
-    let lppSupported = false, lpcSupported = false, evseccSupported = false, evccSupported = false;
+    let lppSupported = false, lpcSupported = false, evseccSupported = false, evccSupported = false,
+        evcemSupported = false;
 
     function updateLPPDisplay(s) {
         lppSupported = s;
@@ -1465,6 +1489,20 @@
         }
     }
 
+    function updateEVCEMDisplay(s) {
+        evcemSupported = s;
+        const c = document.getElementById('evcemDisplay'), d = document.getElementById('evcemDisable');
+        if (c && d) {
+            if (s) {
+                c.style.display = 'flex';
+                d.style.display = 'none'
+            } else {
+                c.style.display = 'none';
+                d.style.display = 'flex'
+            }
+        }
+    }
+
 
     const originalSetUsecase = setUsecase;
     setUsecase = function (name, supported) {
@@ -1478,6 +1516,8 @@
                 updateEVSECCDisplay(supported);
             } else if (String(name || '').trim().toLowerCase() === 'evcc') {
                 updateEVCCDisplay(supported);
+            } else if (String(name || '').trim().toLowerCase() === 'evcem') {
+                updateEVCEMDisplay(supported);
             }
         } catch (e) {
         }
@@ -1567,6 +1607,12 @@
                 setText('evccIdentificationType', d.evccIdentifications[0].ValueType);
                 setText('evccIdentificationValue', d.evccIdentifications[0].Value);
             }
+            if(evcemSupported) {
+                setText('evcemChargingCurrent', d.evcemCurrentPerPhase);
+                setText('evcemChargingPower', d.evcemPowerPerPhase);
+                setText('evcemChargedEnergy', d.evcemEnergyCharged);
+            }
+
         } catch (e) {
             // ignore
         }
