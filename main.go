@@ -30,7 +30,7 @@ import (
 	cemevsecc "github.com/enbility/eebus-go/usecases/cem/evsecc"
 	eglpc "github.com/enbility/eebus-go/usecases/eg/lpc"
 	eglpp "github.com/enbility/eebus-go/usecases/eg/lpp"
-	//mampc "github.com/enbility/eebus-go/usecases/ma/mpc"
+	mampc "github.com/enbility/eebus-go/usecases/ma/mpc"
 
 	shipapi "github.com/enbility/ship-go/api"
 	"github.com/enbility/ship-go/cert"
@@ -110,6 +110,12 @@ type usecaseData struct {
 	EvcemPhasesConnected uint      `json:"evcemPhasesConnected,omitempty"`
 	EvcemEnergyCharged   float64   `json:"evcemEnergyCharged,omitempty"`
 	EvcemPowerPerPhase   []float64 `json:"evcemPowerPerPhase,omitempty"`
+	// MPC usecase data
+	MpcPowerPerPhase   []float64 `json:"mpcPowerPerPhase,omitempty"`
+	MpcCurrentPerPhase []float64 `json:"mpcCurrentPerPhase,omitempty"`
+	MpcPower           float64   `json:"mpcPower,omitempty"`
+	MpcFrequency       float64   `json:"mpcFrequency,omitempty"`
+	MpcVoltagePerPhase []float64 `json:"mpcVoltagePerPhase,omitempty"`
 }
 
 type hems struct {
@@ -262,11 +268,10 @@ func (h *hems) run() {
 	h.setUsecaseSupported("LPP", false)
 
 	// MPC
-	/*
-		h.ucmampc = mampc.NewMPC(localEntity, h.HandleMaMpc)
-		h.myService.AddUseCase(h.ucmampc)
-		h.setUsecaseSupported("MPC", false)
-	*/
+	h.ucmampc = mampc.NewMPC(localEntity, h.HandleMaMpc)
+	h.myService.AddUseCase(h.ucmampc)
+	h.setUsecaseSupported("MPC", false)
+
 	if len(remoteSki) == 0 {
 		os.Exit(0)
 	}
@@ -490,9 +495,6 @@ func (h *hems) HandleEgEvsecc(ski string, device spineapi.DeviceRemoteInterface,
 			h.usecaseData.EvseccOperatingStateDescription = errorMessage
 		}
 	}
-	if event == cemevsecc.UseCaseSupportUpdate {
-		h.setUsecaseSupported("EVSECC", true)
-	}
 	h.updateEntitiesFromDevice(device)
 }
 
@@ -506,15 +508,66 @@ func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, e
 }
 
 // HandleMaMpc MaMPC Handler
-/*
+
 func (h *hems) HandleMaMpc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("MaMpc Event: ", event)
-	if event == mampc.UseCaseSupportUpdate {
+
+	switch event {
+	case mampc.UseCaseSupportUpdate:
 		h.setUsecaseSupported("MPC", true)
+	case mampc.DataUpdatePowerPerPhase:
+		power, err := h.ucmampc.PowerPerPhase(entity)
+		if err != nil {
+			fmt.Println("Error getting PowerPerPhase:", err)
+		} else {
+			h.usecaseData.MpcPowerPerPhase = power
+		}
+	case mampc.DataUpdateCurrentsPerPhase:
+		currents, err := h.ucmampc.CurrentPerPhase(entity)
+		if err != nil {
+			fmt.Println("Error getting CurrentPerPhase:", err)
+		} else {
+			h.usecaseData.MpcCurrentPerPhase = currents
+		}
+	case mampc.DataUpdatePower:
+		power, err := h.ucmampc.Power(entity)
+		if err != nil {
+			fmt.Println("Error getting Power:", err)
+		} else {
+			h.usecaseData.MpcPower = power
+		}
+	case mampc.DataUpdateEnergyConsumed:
+		consumed, err := h.ucmampc.EnergyConsumed(entity)
+		if err != nil {
+			fmt.Println("Error getting EnergyConsumed:", err)
+		} else {
+			h.usecaseData.MpcPower = consumed
+		}
+	case mampc.DataUpdateEnergyProduced:
+		produced, err := h.ucmampc.EnergyProduced(entity)
+		if err != nil {
+			fmt.Println("Error getting EnergyProduced:", err)
+		} else {
+			h.usecaseData.MpcPower = produced
+		}
+	case mampc.DataUpdateFrequency:
+		frequency, err := h.ucmampc.Frequency(entity)
+		if err != nil {
+			fmt.Println("Error getting Frequency:", err)
+		} else {
+			h.usecaseData.MpcFrequency = frequency
+		}
+	case mampc.DataUpdateVoltagePerPhase:
+		voltages, err := h.ucmampc.VoltagePerPhase(entity)
+		if err != nil {
+			fmt.Println("Error getting VoltagePerPhase:", err)
+		} else {
+			h.usecaseData.MpcVoltagePerPhase = voltages
+		}
 	}
 	h.updateEntitiesFromDevice(device)
 }
-*/
+
 // Write Functions
 
 func (h *hems) WriteLPCConsumptionLimit(durationSeconds int64, value float64, active bool) error {
