@@ -643,6 +643,30 @@
                     </div>
                     <div style="height:1px;background:grey;margin:6px 0"></div>
 
+                    <!-- OPEV-->
+                    <div class="usecase-label">OPEV</div>
+                    <div id="opevDisable" style="color:var(--muted);font-weight:600; display:flex;">not supported
+                    </div>
+                    <div id="opevDisplay" style="display:none;gap:8px;flex-wrap:wrap;align-items:center">
+                        <h5>Scenario 1 - Energy Guard curtails charging current of EV</h5>
+                        <div class="data-container">
+                            <div class="data-label">Load Control Limit</div>
+                            <div id="opevLoadLimit" class="data-value">-</div>
+                            TODO: Add write functions
+                        </div>
+                        <h5>Scenario 2 - EV checks Energy Guard availability</h5>
+                        <div class="data-container">
+                            <div class="data-label">Charging Power per Phase (W)</div>
+                            <div id="opevAvailability" class="data-value">-</div>
+                        </div>
+                        <h5>Scenario 3 - Energy Guard sends error state</h5>
+                        <div class="data-container">
+                            <div class="data-label">Energy Charged (Wh)</div>
+                            <div id="opevErrorstate" class="data-value">-</div>
+                        </div>
+                    </div>
+                    <div style="height:1px;background:grey;margin:6px 0"></div>
+
                 </div>
 
             </section>

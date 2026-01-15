@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	cemopev "github.com/enbility/eebus-go/usecases/cem/opev"
 	"github.com/gorilla/websocket"
 
 	"github.com/enbility/eebus-go/api"
@@ -39,7 +40,7 @@ import (
 )
 
 var remoteSki string
-var enableDebugLogging = false
+var enableDebugLogging = true
 var enableTraceLogging = false
 
 func writePEMFiles(certificate tls.Certificate, certPath, keyPath string) error {
@@ -116,6 +117,11 @@ type usecaseData struct {
 	MpcPower           float64   `json:"mpcPower,omitempty"`
 	MpcFrequency       float64   `json:"mpcFrequency,omitempty"`
 	MpcVoltagePerPhase []float64 `json:"mpcVoltagePerPhase,omitempty"`
+	// OPEV usecase data
+	OpevLoadControlLimit    []ucapi.LoadLimitsPhase `json:"opevLoadControlLimit,omitempty"`
+	OpevCurrentLimitMin     []float64               `json:"opevCurrentLimitMin,omitempty"`
+	OpevCurrentLimitMax     []float64               `json:"opevCurrentLimitMax,omitempty"`
+	OpevCurrentLimitDefault []float64               `json:"opevCurrentLimitDefault,omitempty"`
 }
 
 type hems struct {
@@ -125,6 +131,7 @@ type hems struct {
 	uccemevcc   ucapi.CemEVCCInterface
 	uccemevcem  ucapi.CemEVCEMInterface
 	uccemevsecc ucapi.CemEVSECCInterface
+	uccemopev   ucapi.CemOPEVInterface
 	uceglpp     ucapi.EgLPPInterface
 	uccemcevc   ucapi.CemCEVCInterface
 	ucmampc     ucapi.MaMPCInterface
@@ -259,7 +266,6 @@ func (h *hems) run() {
 
 	// LPC
 	h.uceglpc = eglpc.NewLPC(localEntity, h.HandleEgLPC)
-	h.uceglpc.UpdateUseCaseAvailability(false)
 	h.myService.AddUseCase(h.uceglpc)
 	h.setUsecaseSupported("LPC", false)
 
@@ -268,9 +274,14 @@ func (h *hems) run() {
 	h.setUsecaseSupported("LPP", false)
 
 	// MPC
-	h.ucmampc = mampc.NewMPC(localEntity, h.HandleMaMpc)
-	h.myService.AddUseCase(h.ucmampc)
-	h.setUsecaseSupported("MPC", false)
+	// h.ucmampc = mampc.NewMPC(localEntity, h.HandleMaMpc)
+	// h.myService.AddUseCase(h.ucmampc)
+	// h.setUsecaseSupported("MPC", false)
+
+	// OPEV
+	h.uccemopev = cemopev.NewOPEV(localEntity, h.HandleCemOpev)
+	h.myService.AddUseCase(h.uccemopev)
+	h.setUsecaseSupported("OPEV", false)
 
 	if len(remoteSki) == 0 {
 		os.Exit(0)
@@ -511,7 +522,6 @@ func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, e
 
 func (h *hems) HandleMaMpc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("MaMpc Event: ", event)
-
 	switch event {
 	case mampc.UseCaseSupportUpdate:
 		h.setUsecaseSupported("MPC", true)
@@ -566,6 +576,30 @@ func (h *hems) HandleMaMpc(ski string, device spineapi.DeviceRemoteInterface, en
 		}
 	}
 	h.updateEntitiesFromDevice(device)
+}
+
+func (h *hems) HandleCemOpev(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
+	fmt.Println("CemOpev Event: ", event)
+	switch event {
+	case cemopev.UseCaseSupportUpdate:
+		h.setUsecaseSupported("OPEV", true)
+	case cemopev.DataUpdateLimit:
+		loadlimit, err := h.uccemopev.LoadControlLimits(entity)
+		if err != nil {
+			fmt.Println("Error getting LoadControlLimits:", err)
+		} else {
+			h.usecaseData.OpevLoadControlLimit = loadlimit
+		}
+	case cemopev.DataUpdateCurrentLimits:
+		currentlimitMin, currentlimitMax, currentlimitDefault, err := h.uccemopev.CurrentLimits(entity)
+		if err != nil {
+			fmt.Println("Error getting CurrentLimits:", err)
+		} else {
+			h.usecaseData.OpevCurrentLimitMin = currentlimitMin
+			h.usecaseData.OpevCurrentLimitMax = currentlimitMax
+			h.usecaseData.OpevCurrentLimitDefault = currentlimitDefault
+		}
+	}
 }
 
 // Write Functions
@@ -722,6 +756,9 @@ func (h *hems) Debug(args ...interface{}) {
 	h.appendLog(strings.TrimRight(line, "\n"))
 	if enableDebugLogging {
 		fmt.Printf("%s", line)
+		if strings.Contains(line, "operation is not supported") {
+			debug.PrintStack()
+		}
 	}
 }
 
@@ -733,6 +770,9 @@ func (h *hems) Debugf(format string, args ...interface{}) {
 	h.appendLog(strings.TrimRight(line, "\n"))
 	if enableDebugLogging {
 		fmt.Println(line)
+		if strings.Contains(line, "operation is not supported") {
+			debug.PrintStack()
+		}
 	}
 }
 

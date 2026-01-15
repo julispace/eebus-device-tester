@@ -2,7 +2,7 @@
 
 This app is a simple EEBUS device tester written in Go using the [eebus-go library](https://github.com/enbility/eebus-go). It can be used to test EEBUS implementations by simulating a device that connects to a EEBUS device:
 - Starts a local EEBUS service and connects to a remote device using SHIP and SPINE
-- Serves a web UI (WebSocket + REST) showing logs, sent/received SPINE messages, usecases and discovered entities.
+- Serves a web UI (showing logs, sent/received SPINE messages, usecases and discovered entities. Additionally it shows the values provided under these usecases.
 - Provides basic REST APIs to trigger write operations (e.g. LPC limits). Not all write operations are Supported
 
 ## Supported Usecases
@@ -13,6 +13,7 @@ Several usecases are supported under various actors. The listed operations are s
     - Write Consumption Limit
     - Write Failsafe
   - #### Limitation of Power Production (LPP)
+    - Not yet implemented in frontend
 - ### Actor: Energy Manager (CEM)
   - #### Coordinated EV Charging (CEVC)
   - #### EV Comissioning  And Configuration (EVCC)
@@ -20,6 +21,7 @@ Several usecases are supported under various actors. The listed operations are s
   - #### EVSE Commissioning And Configuration (EVSEC)
 - ### Actor: Monitoring Appliance (MA)
   - #### Monitoring of PowerConsumption (MPC)
+    - Not yet implemented
 
 The usecase EV Charging Summary (EVCS) is planned to be supported once it becomes available.
 
@@ -36,10 +38,10 @@ go build
 # required: server port
 ./device-tester <serverport>
 # example
-./device-tester 12345
+./device-tester 4815
 
-# optional: provide remote SKI to connect to another device. Key and cert will be created
-./device-tester 12345 <remoteski> cert.pem key.pem
+# optional but recommended: provide remote SKI to connect to another device. Key and cert will be created
+./device-tester 4815 <remoteski>
 ```
 
 ## Web UI
