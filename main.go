@@ -991,6 +991,11 @@ func (h *hems) startWebInterface() {
 		}
 	}
 
+	webAddr := "localhost"
+	if v := os.Getenv("WEB_ADDR"); v != "" {
+		webAddr = v
+	}
+
 	// initialize wsConns map
 	h.wsMu.Lock()
 	h.wsConns = make(map[*websocket.Conn]struct{})
@@ -1283,7 +1288,7 @@ func (h *hems) startWebInterface() {
 		http.ServeFile(w, r, absFilePath)
 	})
 
-	addr := fmt.Sprintf("localhost:%d", webPort)
+	addr := fmt.Sprintf("%s:%d", webAddr, webPort)
 	h.Infof("Starting web interface on %s", addr)
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		h.Errorf("web interface stopped: %v", err)
