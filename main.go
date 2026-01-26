@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -299,7 +300,7 @@ func (h *hems) HandleEgLPP(ski string, device spineapi.DeviceRemoteInterface, en
 		if err != nil {
 			fmt.Println("Error getting FailsafeDurationMinimum:", err)
 		} else {
-			h.usecaseData.LppFailsafeDur = minDur
+			h.usecaseData.LppFailsafeDur = minDur / time.Minute
 		}
 	case eglpp.DataUpdateFailsafeProductionActivePowerLimit:
 		powerLimit, err := h.uceglpp.FailsafeProductionActivePowerLimit(entity)
@@ -624,6 +625,79 @@ func (h *hems) WriteLPCFailsafeValue(failsafePowerLimit float64) {
 			fmt.Println("Error writing FailsafeConsumptionActivePowerLimit:", err)
 		} else {
 			fmt.Println("Wrote FailsafeConsumptionActivePowerLimit to entity", entity)
+		}
+	}
+}
+
+func (h *hems) WriteLPPProductionLimit(durationSeconds int64, value float64, active bool) error {
+    // Ensure the value is always negative for Production Limits (LPP)
+    // per EEBus sign convention: negative values limit production.
+    forcedNegativeValue := -math.Abs(value)
+
+    // iterate remote entities and write the provided production limit
+    entities := h.uceglpp.RemoteEntitiesScenarios()
+
+    fmt.Println("Writing LPP Production Limit:", durationSeconds, forcedNegativeValue, active)
+    
+    limit := ucapi.LoadLimit{
+        Duration: time.Duration(durationSeconds) * time.Second,
+        IsActive: active,
+        Value:    forcedNegativeValue,
+    }
+    
+    fmt.Println("Found entities:", entities)
+    var errs []string
+    resultCB := func(msg model.ResultDataType) {
+        if *msg.ErrorNumber == model.ErrorNumberTypeNoError {
+            fmt.Println("Production limit accepted.")
+        } else {
+            fmt.Println("Production limit rejected. Code", *msg.ErrorNumber, "Description", *msg.Description)
+        }
+    }
+    
+    for _, entity := range entities {
+        _, err := h.uceglpp.WriteProductionLimit(entity.Entity, limit, resultCB)
+        if err != nil {
+            errStr := fmt.Sprintf("%v: %v", entity, err)
+            errs = append(errs, errStr)
+            fmt.Println("Error writing production limit:", err)
+        } else {
+            fmt.Println("Wrote production limit to entity", entity)
+        }
+    }
+    
+    if len(errs) > 0 {
+        return fmt.Errorf("errors: %s", strings.Join(errs, "; "))
+    }
+    return nil
+}
+
+func (h *hems) WriteLPPFailsafeDuration(minDuration time.Duration) {
+	// iterate remote entities and write the failsafe duration
+	entities := h.uceglpp.RemoteEntitiesScenarios()
+	fmt.Println("Writing LPP Failsafe Duration:", minDuration)
+	fmt.Println("Found entities:", entities)
+	for _, entity := range entities {
+		_, err := h.uceglpp.WriteFailsafeDurationMinimum(entity.Entity, minDuration)
+		if err != nil {
+			fmt.Println("Error writing failsafeDurationMinimum:", err)
+		} else {
+			fmt.Println("Wrote failsafeDurationMinimum to entity", entity)
+		}
+	}
+}
+
+func (h *hems) WriteLPPFailsafeValue(failsafePowerLimit float64) {
+	// iterate remote entities and write the failsafe power limit
+	entities := h.uceglpp.RemoteEntitiesScenarios()
+	fmt.Println("Writing LPP Failsafe Power Limit:", failsafePowerLimit)
+	fmt.Println("Found entities:", entities)
+	for _, entity := range entities {
+		_, err := h.uceglpp.WriteFailsafeProductionActivePowerLimit(entity.Entity, failsafePowerLimit)
+		if err != nil {
+			fmt.Println("Error writing FailsafeProductionActivePowerLimit:", err)
+		} else {
+			fmt.Println("Wrote FailsafeProductionActivePowerLimit to entity", entity)
 		}
 	}
 }
@@ -1055,6 +1129,46 @@ func (h *hems) startWebInterface() {
 				limit = l
 			}
 			h.WriteLPCFailsafeValue(limit)
+			_, _ = w.Write([]byte("ok"))
+			return
+		case "writeLPPProductionLimit":
+			// expect: durationSeconds (int), value (float), isActive (bool)
+			var durSec int64
+			var val float64
+			var isActive bool
+			if d, ok := payload["durationSeconds"].(float64); ok {
+				durSec = int64(d)
+			}
+			if v, ok := payload["value"].(float64); ok {
+				val = v
+			}
+			if a, ok := payload["isActive"].(bool); ok {
+				isActive = a
+			}
+			if err := h.WriteLPPProductionLimit(durSec, val, isActive); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(err.Error()))
+				return
+			}
+			_, _ = w.Write([]byte("ok"))
+			return
+		case "writeLPPFailsafeDuration":
+			// expect: durationMinutes (int)
+			var minutes int64
+			if d, ok := payload["durationMinutes"].(float64); ok {
+				minutes = int64(d)
+			}
+			minDuration := time.Duration(minutes) * time.Minute
+			h.WriteLPPFailsafeDuration(minDuration)
+			_, _ = w.Write([]byte("ok"))
+			return
+		case "writeLPPFailsafeValue":
+			// expect: failsafePower (float)
+			var limit float64
+			if l, ok := payload["failsafePower"].(float64); ok {
+				limit = l
+			}
+			h.WriteLPPFailsafeValue(limit)
 			_, _ = w.Write([]byte("ok"))
 			return
 		default:
