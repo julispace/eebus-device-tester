@@ -19,7 +19,9 @@ import (
 	"syscall"
 	"time"
 
+	cemevsoc "github.com/enbility/eebus-go/usecases/cem/evsoc"
 	cemopev "github.com/enbility/eebus-go/usecases/cem/opev"
+	cemoscev "github.com/enbility/eebus-go/usecases/cem/oscev"
 	"github.com/gorilla/websocket"
 
 	"github.com/enbility/eebus-go/api"
@@ -117,11 +119,27 @@ type usecaseData struct {
 	MpcPower           float64   `json:"mpcPower,omitempty"`
 	MpcFrequency       float64   `json:"mpcFrequency,omitempty"`
 	MpcVoltagePerPhase []float64 `json:"mpcVoltagePerPhase,omitempty"`
+	MpcEnergyConsumed  float64   `json:"mpcEnergyConsumed,omitempty"`
+	MpcEnergyProduced  float64   `json:"mpcEnergyProduced,omitempty"`
 	// OPEV usecase data
 	OpevLoadControlLimit    []ucapi.LoadLimitsPhase `json:"opevLoadControlLimit,omitempty"`
 	OpevCurrentLimitMin     []float64               `json:"opevCurrentLimitMin,omitempty"`
 	OpevCurrentLimitMax     []float64               `json:"opevCurrentLimitMax,omitempty"`
 	OpevCurrentLimitDefault []float64               `json:"opevCurrentLimitDefault,omitempty"`
+	// OSCEV usecase data
+	OscevLoadControlLimit    []ucapi.LoadLimitsPhase `json:"oscevLoadControlLimit,omitempty"`
+	OscevCurrentLimitMin     []float64               `json:"oscevCurrentLimitMin,omitempty"`
+	OscevCurrentLimitMax     []float64               `json:"oscevCurrentLimitMax,omitempty"`
+	OscevCurrentLimitDefault []float64               `json:"oscevCurrentLimitDefault,omitempty"`
+	// EVSOC usecase data
+	EvsocStateOfCharge float64 `json:"evsocStateOfCharge,omitempty"`
+	// CEVC usecase data
+	CevcChargeStrategy        string                         `json:"cevcChargeStrategy,omitempty"`
+	CevcEnergyDemand          ucapi.Demand                   `json:"cevcEnergyDemand,omitempty"`
+	CevcTimeSlotConstraints   ucapi.TimeSlotConstraints      `json:"cevcTimeSlotConstraints,omitempty"`
+	CevcIncentiveConstraints  ucapi.IncentiveSlotConstraints `json:"cevcIncentiveConstraints,omitempty"`
+	CevcChargePlanConstraints []ucapi.DurationSlotValue      `json:"cevcChargePlanConstraints,omitempty"`
+	CevcChargePlan            ucapi.ChargePlan               `json:"cevcChargePlan,omitempty"`
 }
 
 type hems struct {
@@ -132,6 +150,8 @@ type hems struct {
 	uccemevcem  ucapi.CemEVCEMInterface
 	uccemevsecc ucapi.CemEVSECCInterface
 	uccemopev   ucapi.CemOPEVInterface
+	uccemoscev  ucapi.CemOSCEVInterface
+	uccemevsoc  ucapi.CemEVSOCInterface
 	uceglpp     ucapi.EgLPPInterface
 	uccemcevc   ucapi.CemCEVCInterface
 	ucmampc     ucapi.MaMPCInterface
@@ -271,17 +291,28 @@ func (h *hems) run() {
 
 	// LPP
 	h.uceglpp = eglpp.NewLPP(localEntity, h.HandleEgLPP)
+	h.myService.AddUseCase(h.uceglpp)
 	h.setUsecaseSupported("LPP", false)
 
 	// MPC
-	// h.ucmampc = mampc.NewMPC(localEntity, h.HandleMaMpc)
-	// h.myService.AddUseCase(h.ucmampc)
-	// h.setUsecaseSupported("MPC", false)
+	h.ucmampc = mampc.NewMPC(localEntity, h.HandleMaMpc)
+	h.myService.AddUseCase(h.ucmampc)
+	h.setUsecaseSupported("MPC", false)
 
 	// OPEV
 	h.uccemopev = cemopev.NewOPEV(localEntity, h.HandleCemOpev)
 	h.myService.AddUseCase(h.uccemopev)
 	h.setUsecaseSupported("OPEV", false)
+
+	// OSCEV
+	h.uccemoscev = cemoscev.NewOSCEV(localEntity, h.HandleCemOscev)
+	h.myService.AddUseCase(h.uccemoscev)
+	h.setUsecaseSupported("OSCEV", false)
+
+	// EVSOC
+	h.uccemevsoc = cemevsoc.NewEVSOC(localEntity, h.HandleCemEvsoc)
+	h.myService.AddUseCase(h.uccemevsoc)
+	h.setUsecaseSupported("EVSOC", false)
 
 	if len(remoteSki) == 0 {
 		os.Exit(0)
@@ -512,8 +543,66 @@ func (h *hems) HandleEgEvsecc(ski string, device spineapi.DeviceRemoteInterface,
 // HandleEgCevc Energy Guard CEVC Handler
 func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("EgCEVC Event: ", event)
-	if event == cemcevc.UseCaseSupportUpdate {
+	switch event {
+	case cemcevc.UseCaseSupportUpdate:
 		h.setUsecaseSupported("CEVC", true)
+	case cemcevc.DataUpdateEnergyDemand:
+		demand, err := h.uccemcevc.EnergyDemand(entity)
+		if err != nil {
+			fmt.Println("Error getting EnergyDemand:", err)
+		} else {
+			h.usecaseData.CevcEnergyDemand = demand
+		}
+		// Also update charge strategy when energy demand changes
+		strategy := h.uccemcevc.ChargeStrategy(entity)
+		h.usecaseData.CevcChargeStrategy = string(strategy)
+	case cemcevc.DataUpdateTimeSlotConstraints:
+		constraints, err := h.uccemcevc.TimeSlotConstraints(entity)
+		if err != nil {
+			fmt.Println("Error getting TimeSlotConstraints:", err)
+		} else {
+			h.usecaseData.CevcTimeSlotConstraints = constraints
+		}
+	case cemcevc.DataUpdateIncentiveTable:
+		incentives, err := h.uccemcevc.IncentiveConstraints(entity)
+		if err != nil {
+			fmt.Println("Error getting IncentiveConstraints:", err)
+		} else {
+			h.usecaseData.CevcIncentiveConstraints = incentives
+		}
+	case cemcevc.DataUpdateChargePlanConstraints:
+		planConstraints, err := h.uccemcevc.ChargePlanConstraints(entity)
+		if err != nil {
+			fmt.Println("Error getting ChargePlanConstraints:", err)
+		} else {
+			h.usecaseData.CevcChargePlanConstraints = planConstraints
+		}
+	case cemcevc.DataUpdateChargePlan:
+		plan, err := h.uccemcevc.ChargePlan(entity)
+		if err != nil {
+			fmt.Println("Error getting ChargePlan:", err)
+		} else {
+			h.usecaseData.CevcChargePlan = plan
+		}
+	case cemcevc.DataRequestedPowerLimitsAndIncentives:
+		fmt.Println("CEVC: EV requested power limits and incentives - sending defaults")
+		// Send default power limits (max possible for 7 days)
+		err := h.uccemcevc.WritePowerLimits(entity, nil)
+		if err != nil {
+			fmt.Println("Error writing default PowerLimits:", err)
+		}
+		// Send default incentives (same price for 7 days)
+		err = h.uccemcevc.WriteIncentives(entity, nil)
+		if err != nil {
+			fmt.Println("Error writing default Incentives:", err)
+		}
+	case cemcevc.DataRequestedIncentiveTableDescription:
+		fmt.Println("CEVC: EV requested incentive table description")
+		// This would require setting up tariff descriptions - using nil for defaults
+		err := h.uccemcevc.WriteIncentiveTableDescriptions(entity, nil)
+		if err != nil {
+			fmt.Println("Error writing IncentiveTableDescriptions:", err)
+		}
 	}
 	h.updateEntitiesFromDevice(device)
 }
@@ -551,14 +640,14 @@ func (h *hems) HandleMaMpc(ski string, device spineapi.DeviceRemoteInterface, en
 		if err != nil {
 			fmt.Println("Error getting EnergyConsumed:", err)
 		} else {
-			h.usecaseData.MpcPower = consumed
+			h.usecaseData.MpcEnergyConsumed = consumed
 		}
 	case mampc.DataUpdateEnergyProduced:
 		produced, err := h.ucmampc.EnergyProduced(entity)
 		if err != nil {
 			fmt.Println("Error getting EnergyProduced:", err)
 		} else {
-			h.usecaseData.MpcPower = produced
+			h.usecaseData.MpcEnergyProduced = produced
 		}
 	case mampc.DataUpdateFrequency:
 		frequency, err := h.ucmampc.Frequency(entity)
@@ -600,6 +689,51 @@ func (h *hems) HandleCemOpev(ski string, device spineapi.DeviceRemoteInterface, 
 			h.usecaseData.OpevCurrentLimitDefault = currentlimitDefault
 		}
 	}
+	h.updateEntitiesFromDevice(device)
+
+}
+
+// HandleCemOscev CEM OSCEV Handler (Optimization of Self-Consumption During EV Charging)
+func (h *hems) HandleCemOscev(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
+	fmt.Println("CemOscev Event: ", event)
+	switch event {
+	case cemoscev.UseCaseSupportUpdate:
+		h.setUsecaseSupported("OSCEV", true)
+	case cemoscev.DataUpdateLimit:
+		loadlimit, err := h.uccemoscev.LoadControlLimits(entity)
+		if err != nil {
+			fmt.Println("Error getting OSCEV LoadControlLimits:", err)
+		} else {
+			h.usecaseData.OscevLoadControlLimit = loadlimit
+		}
+	case cemoscev.DataUpdateCurrentLimits:
+		currentlimitMin, currentlimitMax, currentlimitDefault, err := h.uccemoscev.CurrentLimits(entity)
+		if err != nil {
+			fmt.Println("Error getting OSCEV CurrentLimits:", err)
+		} else {
+			h.usecaseData.OscevCurrentLimitMin = currentlimitMin
+			h.usecaseData.OscevCurrentLimitMax = currentlimitMax
+			h.usecaseData.OscevCurrentLimitDefault = currentlimitDefault
+		}
+	}
+	h.updateEntitiesFromDevice(device)
+}
+
+// HandleCemEvsoc CEM EVSOC Handler (EV State Of Charge)
+func (h *hems) HandleCemEvsoc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
+	fmt.Println("CemEvsoc Event: ", event)
+	switch event {
+	case cemevsoc.UseCaseSupportUpdate:
+		h.setUsecaseSupported("EVSOC", true)
+	case cemevsoc.DataUpdateStateOfCharge:
+		soc, err := h.uccemevsoc.StateOfCharge(entity)
+		if err != nil {
+			fmt.Println("Error getting StateOfCharge:", err)
+		} else {
+			h.usecaseData.EvsocStateOfCharge = soc
+		}
+	}
+	h.updateEntitiesFromDevice(device)
 }
 
 // Write Functions
@@ -660,6 +794,85 @@ func (h *hems) WriteLPCFailsafeValue(failsafePowerLimit float64) {
 			fmt.Println("Wrote FailsafeConsumptionActivePowerLimit to entity", entity)
 		}
 	}
+}
+
+// LPP Write Functions
+
+func (h *hems) WriteLPPProductionLimit(durationSeconds int64, value float64, active bool) error {
+	entities := h.uceglpp.RemoteEntitiesScenarios()
+	fmt.Println("Writing LPP Production Limit:", durationSeconds, value, active)
+	fmt.Println("Found entities:", entities)
+	var errs []string
+	for _, entity := range entities {
+		_, err := h.uceglpp.WriteProductionLimit(entity.Entity, ucapi.LoadLimit{
+			Duration:     time.Duration(durationSeconds) * time.Second,
+			IsChangeable: false,
+			IsActive:     active,
+			Value:        value,
+		}, nil)
+		if err != nil {
+			errStr := fmt.Sprintf("%v: %v", entity, err)
+			errs = append(errs, errStr)
+			fmt.Println("Error writing production limit:", err)
+		} else {
+			fmt.Println("Wrote production limit to entity", entity)
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("errors: %s", strings.Join(errs, "; "))
+	}
+	return nil
+}
+
+func (h *hems) WriteLPPFailsafeDuration(minDuration time.Duration) {
+	entities := h.uceglpp.RemoteEntitiesScenarios()
+	fmt.Println("Writing LPP Failsafe Duration:", minDuration)
+	fmt.Println("Found entities:", entities)
+	for _, entity := range entities {
+		_, err := h.uceglpp.WriteFailsafeDurationMinimum(entity.Entity, minDuration)
+		if err != nil {
+			fmt.Println("Error writing LPP failsafeDurationMinimum:", err)
+		} else {
+			fmt.Println("Wrote LPP failsafeDurationMinimum to entity", entity)
+		}
+	}
+}
+
+func (h *hems) WriteLPPFailsafeValue(failsafePowerLimit float64) {
+	entities := h.uceglpp.RemoteEntitiesScenarios()
+	fmt.Println("Writing LPP Failsafe Power Limit:", failsafePowerLimit)
+	fmt.Println("Found entities:", entities)
+	for _, entity := range entities {
+		_, err := h.uceglpp.WriteFailsafeProductionActivePowerLimit(entity.Entity, failsafePowerLimit)
+		if err != nil {
+			fmt.Println("Error writing FailsafeProductionActivePowerLimit:", err)
+		} else {
+			fmt.Println("Wrote FailsafeProductionActivePowerLimit to entity", entity)
+		}
+	}
+}
+
+// OSCEV Write Functions
+
+func (h *hems) WriteOSCEVLoadControlLimits(limits []ucapi.LoadLimitsPhase) error {
+	entities := h.uccemoscev.RemoteEntitiesScenarios()
+	fmt.Println("Writing OSCEV Load Control Limits:", limits)
+	fmt.Println("Found entities:", entities)
+	var errs []string
+	for _, entity := range entities {
+		_, err := h.uccemoscev.WriteLoadControlLimits(entity.Entity, limits, nil)
+		if err != nil {
+			errStr := fmt.Sprintf("%v: %v", entity, err)
+			errs = append(errs, errStr)
+			fmt.Println("Error writing OSCEV LoadControlLimits:", err)
+		} else {
+			fmt.Println("Wrote OSCEV LoadControlLimits to entity", entity)
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("errors: %s", strings.Join(errs, "; "))
+	}
+	return nil
 }
 
 // EEBUSServiceHandler
@@ -1095,6 +1308,79 @@ func (h *hems) startWebInterface() {
 				limit = l
 			}
 			h.WriteLPCFailsafeValue(limit)
+			_, _ = w.Write([]byte("ok"))
+			return
+		case "writeLPPProductionLimit":
+			// expect: durationSeconds (int), value (float), isActive (bool)
+			var durSec int64
+			var val float64
+			var isActive bool
+			if d, ok := payload["durationSeconds"].(float64); ok {
+				durSec = int64(d)
+			}
+			if v, ok := payload["value"].(float64); ok {
+				val = v
+			}
+			if a, ok := payload["isActive"].(bool); ok {
+				isActive = a
+			}
+			if err := h.WriteLPPProductionLimit(durSec, val, isActive); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(err.Error()))
+				return
+			}
+			_, _ = w.Write([]byte("ok"))
+			return
+		case "writeLPPFailsafeDuration":
+			// expect: durationMinutes (int)
+			var minutes int64
+			if d, ok := payload["durationMinutes"].(float64); ok {
+				minutes = int64(d)
+			}
+			minDuration := time.Duration(minutes) * time.Minute
+			h.WriteLPPFailsafeDuration(minDuration)
+			_, _ = w.Write([]byte("ok"))
+			return
+		case "writeLPPFailsafeValue":
+			// expect: failsafePower (float)
+			var limit float64
+			if l, ok := payload["failsafePower"].(float64); ok {
+				limit = l
+			}
+			h.WriteLPPFailsafeValue(limit)
+			_, _ = w.Write([]byte("ok"))
+			return
+		case "writeOSCEVLoadControlLimits":
+			// expect: limits array with phase, value, isActive
+			limitsRaw, ok := payload["limits"].([]interface{})
+			if !ok {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte("limits must be an array"))
+				return
+			}
+			var limits []ucapi.LoadLimitsPhase
+			for _, lRaw := range limitsRaw {
+				lMap, ok := lRaw.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				var llp ucapi.LoadLimitsPhase
+				if p, ok := lMap["phase"].(string); ok {
+					llp.Phase = model.ElectricalConnectionPhaseNameType(p)
+				}
+				if v, ok := lMap["value"].(float64); ok {
+					llp.Value = v
+				}
+				if a, ok := lMap["isActive"].(bool); ok {
+					llp.IsActive = a
+				}
+				limits = append(limits, llp)
+			}
+			if err := h.WriteOSCEVLoadControlLimits(limits); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(err.Error()))
+				return
+			}
 			_, _ = w.Write([]byte("ok"))
 			return
 		default:
