@@ -6,19 +6,22 @@ This app is a simple EEBUS device tester written in Go using the [eebus-go libra
 - Provides basic REST APIs to trigger write operations (e.g. LPC limits). Not all write operations are Supported
 
 ## Supported Usecases
-Several usecases are supported under various actors. The listed operations are supported:
+Several usecases are supported under various actors. The listed write operations are supported as of yet:
 
 - ### Actor: Energy Guard (EG
   - #### Limitation of Power Consumption (LPC)
     - Write Consumption Limit
     - Write Failsafe
   - #### Limitation of Power Production (LPP)
-    - Not yet implemented in frontend
+      - Write Consumption Limit
+      - Write Failsafe
 - ### Actor: Energy Manager (CEM)
   - #### Coordinated EV Charging (CEVC)
-  - #### EV Comissioning  And Configuration (EVCC)
-  - #### EV Charging Electricity Measrurement (EVCEM)
+  - #### EV Commissioning  And Configuration (EVCC)
+  - #### EV Charging Electricity Measurement (EVCEM)
   - #### EVSE Commissioning And Configuration (EVSEC)
+  - #### Overload Protection by EV Charging Current Curtailment (OPEV)
+    - Write Load Control Limit
 - ### Actor: Monitoring Appliance (MA)
   - #### Monitoring of PowerConsumption (MPC)
     - Not yet implemented
