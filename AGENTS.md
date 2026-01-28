@@ -43,6 +43,11 @@ The backend is a single-file Go application (`main.go`) containing:
    - `usecaseData` struct holds all usecase values
    - `hems` struct is the main application struct with service, usecases, and state
 
+6. **Configuration System**
+   - `config.json` file for enabling/disabling usecases
+   - Loaded at startup; if not found, all usecases are enabled by default
+   - Configuration served to frontend via `GET /api/config`
+
 ### Frontend (web/index.html)
 
 The frontend should be split into a html file containing the HTML structure, CSS file containing the css styles, and a Js file containing the javascript logic. 
@@ -159,6 +164,87 @@ updateNEWUCDisplay(false);
 // 6. Update fetchUsecaseData
 if (newucSupported) {
     setText('newucValue1', d.newucValue1);
+}
+```
+
+## Configuration
+
+The application supports runtime configuration via `config.json` to enable/disable usecases without recompiling.
+
+### Config File Structure
+
+```json
+{
+  "usecases": {
+    "lpc": {
+      "enabled": true,
+      "description": "Limitation of Power Consumption (EG)"
+    },
+    "lpp": {
+      "enabled": true,
+      "description": "Limitation of Power Production (EG)"
+    },
+    "evcc": {
+      "enabled": true,
+      "description": "EV Commissioning and Configuration (CEM)"
+    },
+    "evcem": {
+      "enabled": true,
+      "description": "EV Charging Electricity Measurement (CEM)"
+    },
+    "evsecc": {
+      "enabled": true,
+      "description": "EVSE Commissioning and Configuration (CEM)"
+    },
+    "cevc": {
+      "enabled": true,
+      "description": "Coordinated EV Charging (CEM)"
+    },
+    "opev": {
+      "enabled": true,
+      "description": "Overload Protection by EV Charging Current Curtailment (CEM)"
+    },
+    "oscev": {
+      "enabled": true,
+      "description": "Optimization of Self-Consumption During EV Charging (CEM)"
+    },
+    "evsoc": {
+      "enabled": true,
+      "description": "EV State Of Charge (CEM)"
+    },
+    "mpc": {
+      "enabled": true,
+      "description": "Monitoring of Power Consumption (MA)"
+    }
+  }
+}
+```
+
+### Configuration Behavior
+
+- **File location**: `config.json` in the same directory as the executable
+- **Missing file**: If `config.json` doesn't exist, all usecases are enabled by default
+- **Invalid file**: If the file exists but is malformed, the application will fail to start with an error
+- **Backend**: Disabled usecases are not initialized and don't consume resources
+- **Frontend**: Disabled usecases are completely hidden from the UI
+- **No restart needed**: Just edit `config.json` and restart the application
+
+### Example: Disable MPC and CEVC
+
+```json
+{
+  "usecases": {
+    "lpc": {"enabled": true, "description": "Limitation of Power Consumption (EG)"},
+    "lpp": {"enabled": true, "description": "Limitation of Power Production (EG)"},
+    "evcc": {"enabled": true, "description": "EV Commissioning and Configuration (CEM)"},
+    "evcem": {"enabled": true, "description": "EV Charging Electricity Measurement (CEM)"},
+    "evsecc": {"enabled": true, "description": "EVSE Commissioning and Configuration (CEM)"},
+    "cevc": {"enabled": false, "description": "Coordinated EV Charging (CEM)"},
+    "opev": {"enabled": true, "description": "Overload Protection by EV Charging Current Curtailment (CEM)"},
+    "oscev": {"enabled": true, "description": "Optimization of Self-Consumption During EV Charging (CEM)"},
+    "evsoc": {"enabled": true, "description": "EV State Of Charge (CEM)"},
+    "mpc": {"enabled": false, "description": "Monitoring of Power Consumption (MA)"}
+  }
 }
 ```
 

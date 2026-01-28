@@ -42,8 +42,59 @@ import (
 )
 
 var remoteSki string
-var enableDebugLogging = true
+var enableDebugLogging = false
 var enableTraceLogging = false
+
+// Config represents the application configuration
+type Config struct {
+	Usecases map[string]UsecaseConfig `json:"usecases"`
+}
+
+// UsecaseConfig represents configuration for a single usecase
+type UsecaseConfig struct {
+	Enabled     bool   `json:"enabled"`
+	Description string `json:"description"`
+}
+
+// loadConfig loads the config.json file or returns default config if file doesn't exist
+func loadConfig() (*Config, error) {
+	configPath := "config.json"
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			// Return default config with all usecases enabled
+			fmt.Println("config.json not found, using default configuration (all usecases enabled)")
+			return getDefaultConfig(), nil
+		}
+		return nil, fmt.Errorf("reading config file: %w", err)
+	}
+
+	var cfg Config
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("parsing config file: %w", err)
+	}
+
+	fmt.Println("Configuration loaded from config.json")
+	return &cfg, nil
+}
+
+// getDefaultConfig returns a config with all usecases enabled
+func getDefaultConfig() *Config {
+	return &Config{
+		Usecases: map[string]UsecaseConfig{
+			"lpc":    {Enabled: true, Description: "Limitation of Power Consumption (EG)"},
+			"lpp":    {Enabled: true, Description: "Limitation of Power Production (EG)"},
+			"evcc":   {Enabled: true, Description: "EV Commissioning and Configuration (CEM)"},
+			"evcem":  {Enabled: true, Description: "EV Charging Electricity Measurement (CEM)"},
+			"evsecc": {Enabled: true, Description: "EVSE Commissioning and Configuration (CEM)"},
+			"cevc":   {Enabled: true, Description: "Coordinated EV Charging (CEM)"},
+			"opev":   {Enabled: true, Description: "Overload Protection by EV Charging Current Curtailment (CEM)"},
+			"oscev":  {Enabled: true, Description: "Optimization of Self-Consumption During EV Charging (CEM)"},
+			"evsoc":  {Enabled: true, Description: "EV State Of Charge (CEM)"},
+			"mpc":    {Enabled: true, Description: "Monitoring of Power Consumption (MA)"},
+		},
+	}
+}
 
 func writePEMFiles(certificate tls.Certificate, certPath, keyPath string) error {
 	// Certificate PEM
@@ -177,6 +228,9 @@ type hems struct {
 
 	// usecase data
 	usecaseData usecaseData
+
+	// configuration
+	config *Config
 }
 
 func (h *hems) run() {
@@ -258,61 +312,126 @@ func (h *hems) run() {
 	// initialize usecase state map
 	h.usecaseState = make(map[string]bool)
 
+	// load configuration
+	h.config, err = loadConfig()
+	if err != nil {
+		fmt.Printf("Error loading config: %v\n", err)
+		log.Fatal(err)
+	}
+
 	localEntity := h.myService.LocalDevice().EntityForType(model.EntityTypeTypeCEM)
 
+	// Helper function to check if usecase is enabled
+	isEnabled := func(name string) bool {
+		if cfg, ok := h.config.Usecases[name]; ok {
+			return cfg.Enabled
+		}
+		return true // default to enabled if not in config
+	}
+
 	// CEVC
-	h.uccemcevc = cemcevc.NewCEVC(localEntity, h.HandleEgCevc)
-	h.myService.AddUseCase(h.uccemcevc)
-	h.setUsecaseSupported("CEVC", false)
+	if isEnabled("cevc") {
+		h.uccemcevc = cemcevc.NewCEVC(localEntity, h.HandleEgCevc)
+		h.myService.AddUseCase(h.uccemcevc)
+		h.setUsecaseSupported("CEVC", false)
+		fmt.Println("Usecase CEVC enabled")
+	} else {
+		fmt.Println("Usecase CEVC disabled by config")
+	}
 
 	// EVCEM
-	h.uccemevcem = cemevcem.NewEVCEM(h.myService, localEntity, h.HandleEgEvcem)
-	h.myService.AddUseCase(h.uccemevcem)
-	h.setUsecaseSupported("EVCEM", false)
+	if isEnabled("evcem") {
+		h.uccemevcem = cemevcem.NewEVCEM(h.myService, localEntity, h.HandleEgEvcem)
+		h.myService.AddUseCase(h.uccemevcem)
+		h.setUsecaseSupported("EVCEM", false)
+		fmt.Println("Usecase EVCEM enabled")
+	} else {
+		fmt.Println("Usecase EVCEM disabled by config")
+	}
 
 	// EVCS
 	// TODO: add evcs once supported
 	h.setUsecaseSupported("EVCS", false)
 
 	// EVCC
-	h.uccemevcc = cemevcc.NewEVCC(h.myService, localEntity, h.HandleEgEvcc)
-	h.myService.AddUseCase(h.uccemevcc)
-	h.setUsecaseSupported("EVCC", false)
+	if isEnabled("evcc") {
+		h.uccemevcc = cemevcc.NewEVCC(h.myService, localEntity, h.HandleEgEvcc)
+		h.myService.AddUseCase(h.uccemevcc)
+		h.setUsecaseSupported("EVCC", false)
+		fmt.Println("Usecase EVCC enabled")
+	} else {
+		fmt.Println("Usecase EVCC disabled by config")
+	}
 
 	// EVSECC
-	h.uccemevsecc = cemevsecc.NewEVSECC(localEntity, h.HandleEgEvsecc)
-	h.myService.AddUseCase(h.uccemevsecc)
-	h.setUsecaseSupported("EVSECC", false)
+	if isEnabled("evsecc") {
+		h.uccemevsecc = cemevsecc.NewEVSECC(localEntity, h.HandleEgEvsecc)
+		h.myService.AddUseCase(h.uccemevsecc)
+		h.setUsecaseSupported("EVSECC", false)
+		fmt.Println("Usecase EVSECC enabled")
+	} else {
+		fmt.Println("Usecase EVSECC disabled by config")
+	}
 
 	// LPC
-	h.uceglpc = eglpc.NewLPC(localEntity, h.HandleEgLPC)
-	h.myService.AddUseCase(h.uceglpc)
-	h.setUsecaseSupported("LPC", false)
+	if isEnabled("lpc") {
+		h.uceglpc = eglpc.NewLPC(localEntity, h.HandleEgLPC)
+		h.myService.AddUseCase(h.uceglpc)
+		h.setUsecaseSupported("LPC", false)
+		fmt.Println("Usecase LPC enabled")
+	} else {
+		fmt.Println("Usecase LPC disabled by config")
+	}
 
 	// LPP
-	h.uceglpp = eglpp.NewLPP(localEntity, h.HandleEgLPP)
-	h.myService.AddUseCase(h.uceglpp)
-	h.setUsecaseSupported("LPP", false)
+	if isEnabled("lpp") {
+		h.uceglpp = eglpp.NewLPP(localEntity, h.HandleEgLPP)
+		h.myService.AddUseCase(h.uceglpp)
+		h.setUsecaseSupported("LPP", false)
+		fmt.Println("Usecase LPP enabled")
+	} else {
+		fmt.Println("Usecase LPP disabled by config")
+	}
 
 	// MPC
-	h.ucmampc = mampc.NewMPC(localEntity, h.HandleMaMpc)
-	h.myService.AddUseCase(h.ucmampc)
-	h.setUsecaseSupported("MPC", false)
+	if isEnabled("mpc") {
+		h.ucmampc = mampc.NewMPC(localEntity, h.HandleMaMpc)
+		h.myService.AddUseCase(h.ucmampc)
+		h.setUsecaseSupported("MPC", false)
+		fmt.Println("Usecase MPC enabled")
+	} else {
+		fmt.Println("Usecase MPC disabled by config")
+	}
 
 	// OPEV
-	h.uccemopev = cemopev.NewOPEV(localEntity, h.HandleCemOpev)
-	h.myService.AddUseCase(h.uccemopev)
-	h.setUsecaseSupported("OPEV", false)
+	if isEnabled("opev") {
+		h.uccemopev = cemopev.NewOPEV(localEntity, h.HandleCemOpev)
+		h.myService.AddUseCase(h.uccemopev)
+		h.setUsecaseSupported("OPEV", false)
+		fmt.Println("Usecase OPEV enabled")
+	} else {
+		fmt.Println("Usecase OPEV disabled by config")
+	}
 
 	// OSCEV
-	h.uccemoscev = cemoscev.NewOSCEV(localEntity, h.HandleCemOscev)
-	h.myService.AddUseCase(h.uccemoscev)
-	h.setUsecaseSupported("OSCEV", false)
+	if isEnabled("oscev") {
+		h.uccemoscev = cemoscev.NewOSCEV(localEntity, h.HandleCemOscev)
+		h.myService.AddUseCase(h.uccemoscev)
+		h.setUsecaseSupported("OSCEV", false)
+		fmt.Println("Usecase OSCEV enabled")
+	} else {
+		fmt.Println("Usecase OSCEV disabled by config")
+	}
 
 	// EVSOC
-	h.uccemevsoc = cemevsoc.NewEVSOC(localEntity, h.HandleCemEvsoc)
-	h.myService.AddUseCase(h.uccemevsoc)
-	h.setUsecaseSupported("EVSOC", false)
+	if isEnabled("evsoc") {
+		h.uccemevsoc = cemevsoc.NewEVSOC(localEntity, h.HandleCemEvsoc)
+		h.myService.AddUseCase(h.uccemevsoc)
+		h.setUsecaseSupported("EVSOC", false)
+		fmt.Println("Usecase EVSOC enabled")
+	} else {
+		fmt.Println("Usecase EVSOC disabled by config")
+	}
 
 	if len(remoteSki) == 0 {
 		os.Exit(0)
@@ -486,7 +605,6 @@ func (h *hems) HandleEgEvcem(ski string, device spineapi.DeviceRemoteInterface, 
 		if err != nil {
 			fmt.Println("Error getting CurrentPerPhase:", err)
 		} else {
-			fmt.Println("CurrentPerPhase: ", currentArray)
 			h.usecaseData.EvcemCurrentPerPhase = currentArray
 		}
 	case cemevcem.DataUpdatePhasesConnected:
@@ -508,7 +626,6 @@ func (h *hems) HandleEgEvcem(ski string, device spineapi.DeviceRemoteInterface, 
 		if err != nil {
 			fmt.Println("Error getting PowerPerPhase:", err)
 		} else {
-			fmt.Println("PowerPerPhase: ", powerPerPhaseArray)
 			h.usecaseData.EvcemPowerPerPhase = powerPerPhaseArray
 		}
 	}
@@ -554,6 +671,7 @@ func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, e
 			h.usecaseData.CevcEnergyDemand = demand
 		}
 		// Also update charge strategy when energy demand changes
+		fmt.Println("cevc demand: ", demand)
 		strategy := h.uccemcevc.ChargeStrategy(entity)
 		h.usecaseData.CevcChargeStrategy = string(strategy)
 	case cemcevc.DataUpdateTimeSlotConstraints:
@@ -561,6 +679,7 @@ func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, e
 		if err != nil {
 			fmt.Println("Error getting TimeSlotConstraints:", err)
 		} else {
+			fmt.Println("TimeSlotConstraints: ", constraints)
 			h.usecaseData.CevcTimeSlotConstraints = constraints
 		}
 	case cemcevc.DataUpdateIncentiveTable:
@@ -568,6 +687,7 @@ func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, e
 		if err != nil {
 			fmt.Println("Error getting IncentiveConstraints:", err)
 		} else {
+			fmt.Println("IncentiveConstraints: ", incentives)
 			h.usecaseData.CevcIncentiveConstraints = incentives
 		}
 	case cemcevc.DataUpdateChargePlanConstraints:
@@ -575,6 +695,7 @@ func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, e
 		if err != nil {
 			fmt.Println("Error getting ChargePlanConstraints:", err)
 		} else {
+			fmt.Println("ChargePlanConstraints: ", planConstraints)
 			h.usecaseData.CevcChargePlanConstraints = planConstraints
 		}
 	case cemcevc.DataUpdateChargePlan:
@@ -582,6 +703,7 @@ func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, e
 		if err != nil {
 			fmt.Println("Error getting ChargePlan:", err)
 		} else {
+			fmt.Println("ChargePlan: ", plan)
 			h.usecaseData.CevcChargePlan = plan
 		}
 	case cemcevc.DataRequestedPowerLimitsAndIncentives:
@@ -677,6 +799,7 @@ func (h *hems) HandleCemOpev(ski string, device spineapi.DeviceRemoteInterface, 
 		if err != nil {
 			fmt.Println("Error getting LoadControlLimits:", err)
 		} else {
+			fmt.Println("LoadControlLimits:", loadlimit)
 			h.usecaseData.OpevLoadControlLimit = loadlimit
 		}
 	case cemopev.DataUpdateCurrentLimits:
@@ -684,6 +807,7 @@ func (h *hems) HandleCemOpev(ski string, device spineapi.DeviceRemoteInterface, 
 		if err != nil {
 			fmt.Println("Error getting CurrentLimits:", err)
 		} else {
+			fmt.Println("CurrentLimits:", currentlimitMin, currentlimitMax, currentlimitDefault)
 			h.usecaseData.OpevCurrentLimitMin = currentlimitMin
 			h.usecaseData.OpevCurrentLimitMax = currentlimitMax
 			h.usecaseData.OpevCurrentLimitDefault = currentlimitDefault
@@ -867,6 +991,28 @@ func (h *hems) WriteOSCEVLoadControlLimits(limits []ucapi.LoadLimitsPhase) error
 			fmt.Println("Error writing OSCEV LoadControlLimits:", err)
 		} else {
 			fmt.Println("Wrote OSCEV LoadControlLimits to entity", entity)
+		}
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf("errors: %s", strings.Join(errs, "; "))
+	}
+	return nil
+}
+
+// WriteOPEVLoadControlLimits sends load control limits to OPEV entities
+func (h *hems) WriteOPEVLoadControlLimits(limits []ucapi.LoadLimitsPhase) error {
+	entities := h.uccemopev.RemoteEntitiesScenarios()
+	fmt.Println("Writing OPEV Load Control Limits:", limits)
+	fmt.Println("Found entities:", entities)
+	var errs []string
+	for _, entity := range entities {
+		_, err := h.uccemopev.WriteLoadControlLimits(entity.Entity, limits, nil)
+		if err != nil {
+			errStr := fmt.Sprintf("%v: %v", entity, err)
+			errs = append(errs, errStr)
+			fmt.Println("Error writing OPEV LoadControlLimits:", err)
+		} else {
+			fmt.Println("Wrote OPEV LoadControlLimits to entity", entity)
 		}
 	}
 	if len(errs) > 0 {
@@ -1351,32 +1497,49 @@ func (h *hems) startWebInterface() {
 			_, _ = w.Write([]byte("ok"))
 			return
 		case "writeOSCEVLoadControlLimits":
-			// expect: limits array with phase, value, isActive
-			limitsRaw, ok := payload["limits"].([]interface{})
+			// Simple interface: accept value and isActive, build limits array for all phases
+			value, ok := payload["value"].(float64)
 			if !ok {
 				w.WriteHeader(http.StatusBadRequest)
-				_, _ = w.Write([]byte("limits must be an array"))
+				_, _ = w.Write([]byte("value must be a number"))
 				return
 			}
-			var limits []ucapi.LoadLimitsPhase
-			for _, lRaw := range limitsRaw {
-				lMap, ok := lRaw.(map[string]interface{})
-				if !ok {
-					continue
-				}
-				var llp ucapi.LoadLimitsPhase
-				if p, ok := lMap["phase"].(string); ok {
-					llp.Phase = model.ElectricalConnectionPhaseNameType(p)
-				}
-				if v, ok := lMap["value"].(float64); ok {
-					llp.Value = v
-				}
-				if a, ok := lMap["isActive"].(bool); ok {
-					llp.IsActive = a
-				}
-				limits = append(limits, llp)
+			isActive, ok := payload["isActive"].(bool)
+			if !ok {
+				isActive = true // default to active
+			}
+			// Build limits for all three phases
+			limits := []ucapi.LoadLimitsPhase{
+				{Phase: model.ElectricalConnectionPhaseNameTypeA, Value: value, IsActive: isActive},
+				{Phase: model.ElectricalConnectionPhaseNameTypeB, Value: value, IsActive: isActive},
+				{Phase: model.ElectricalConnectionPhaseNameTypeC, Value: value, IsActive: isActive},
 			}
 			if err := h.WriteOSCEVLoadControlLimits(limits); err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				_, _ = w.Write([]byte(err.Error()))
+				return
+			}
+			_, _ = w.Write([]byte("ok"))
+			return
+		case "writeOPEVLoadControlLimits":
+			// Simple interface: accept value and isActive, build limits array for all phases
+			value, ok := payload["value"].(float64)
+			if !ok {
+				w.WriteHeader(http.StatusBadRequest)
+				_, _ = w.Write([]byte("value must be a number"))
+				return
+			}
+			isActive, ok := payload["isActive"].(bool)
+			if !ok {
+				isActive = true // default to active
+			}
+			// Build limits for all three phases
+			limits := []ucapi.LoadLimitsPhase{
+				{Phase: model.ElectricalConnectionPhaseNameTypeA, Value: value, IsActive: isActive},
+				{Phase: model.ElectricalConnectionPhaseNameTypeB, Value: value, IsActive: isActive},
+				{Phase: model.ElectricalConnectionPhaseNameTypeC, Value: value, IsActive: isActive},
+			}
+			if err := h.WriteOPEVLoadControlLimits(limits); err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				_, _ = w.Write([]byte(err.Error()))
 				return
@@ -1437,6 +1600,14 @@ func (h *hems) startWebInterface() {
 			return
 		}
 		_, _ = w.Write(h.lastEntitiesJSON)
+	})
+
+	// new endpoint: return config to frontend
+	http.HandleFunc("/api/config", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		if err := json.NewEncoder(w).Encode(h.config); err != nil {
+			h.Errorf("encode config: %v", err)
+		}
 	})
 
 	// Serve static /web assets from disk on every request with no-cache headers.

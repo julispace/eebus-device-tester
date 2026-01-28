@@ -721,6 +721,11 @@
                                 <div id="opevLoadLimit" class="data-value">-</div>
                             </div>
                         </div>
+                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                            <input id="writeOpevLimitValue" type="number" placeholder="limit (A)" style="width:90px" value="16"/>
+                            <label style="display:flex;align-items:center;gap:6px;margin:0"><input id="writeOpevLimitActive" type="checkbox" checked/> Active</label>
+                            <button id="sendWriteOpevLimit">Send Load Control Limit</button>
+                        </div>
                         <h5>Scenario 2 - Current Limits</h5>
                         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                             <div class="data-container">
@@ -735,6 +740,10 @@
                                 <div class="data-label">Default (A)</div>
                                 <div id="opevCurrentLimitDefault" class="data-value">-</div>
                             </div>
+                        </div>
+                        <h5>Scenario 3 - Heartbeat</h5>
+                        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                            <div style="color:var(--muted);font-size:13px">CEM sends heartbeat to EVSE to indicate operational state</div>
                         </div>
                     </div>
                     <div style="height:1px;background:grey;margin:6px 0"></div>
@@ -1023,6 +1032,51 @@
         } catch (err) {
             // ignore errors
         }
+    }
+
+    // Load config and hide disabled usecases
+    let usecaseConfig = {};
+    async function loadConfig() {
+        try {
+            const res = await fetch('/api/config');
+            if (!res.ok) {
+                console.warn('Failed to load config, all usecases will be visible');
+                return;
+            }
+            const config = await res.json();
+            usecaseConfig = config.usecases || {};
+            
+            // Hide disabled usecases by removing them from DOM
+            for (const [name, cfg] of Object.entries(usecaseConfig)) {
+                if (!cfg.enabled) {
+                    hideUsecase(name);
+                }
+            }
+        } catch (err) {
+            console.error('Error loading config:', err);
+        }
+    }
+
+    function hideUsecase(name) {
+        const n = name.toLowerCase();
+        // Find the usecase section (header + content + divider)
+        const header = document.querySelector(`.usecase-header:has(#${n}Badge)`);
+        if (!header) return;
+        
+        // Hide header
+        header.style.display = 'none';
+        
+        // Hide content
+        const content = document.getElementById(n + 'Content');
+        if (content) content.style.display = 'none';
+        
+        // Hide the divider after (next sibling)
+        let next = content ? content.nextElementSibling : header.nextElementSibling;
+        if (next && next.tagName === 'DIV' && next.style.height === '1px') {
+            next.style.display = 'none';
+        }
+        
+        console.log(`Usecase ${name} hidden by config`);
     }
 
     function setUsecase(name, supported) {
@@ -1614,7 +1668,18 @@
             });
         }
 
+        // OPEV write handlers
+        const sendWriteOpevLimitBtn = document.getElementById('sendWriteOpevLimit');
+        if (sendWriteOpevLimitBtn) {
+            sendWriteOpevLimitBtn.addEventListener('click', () => {
+                const val = parseFloat((document.getElementById('writeOpevLimitValue') || {}).value) || 0;
+                const active = !!(document.getElementById('writeOpevLimitActive') && document.getElementById('writeOpevLimitActive').checked);
+                apiWrite({cmd: 'writeOPEVLoadControlLimits', value: val, isActive: active});
+            });
+        }
+
         // initial poll
+        loadConfig(); // Load config first to hide disabled usecases
         fetchUsecaseData();
         loadUsecases();
         loadEntities();

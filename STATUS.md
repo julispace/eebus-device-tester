@@ -12,7 +12,7 @@
 | **EVCEM** | EV Charging Electricity Measurement | CEM | Implemented | Implemented | No |
 | **EVSECC** | EVSE Commissioning and Configuration | CEM | Implemented | Implemented | No |
 | **CEVC** | Coordinated EV Charging | CEM | Implemented | Implemented | No (planned) |
-| **OPEV** | Overload Protection by EV Charging Current Curtailment | CEM | Implemented | Implemented | No |
+| **OPEV** | Overload Protection by EV Charging Current Curtailment | CEM | Implemented | Implemented | Yes |
 | **OSCEV** | Optimization of Self-Consumption During EV Charging | CEM | Implemented | Implemented | Yes |
 | **EVSOC** | EV State Of Charge | CEM | Implemented | Implemented | No |
 | **MPC** | Monitoring of Power Consumption | MA | Implemented | Implemented | No |
@@ -45,6 +45,32 @@
 - Backend write function: `WriteOSCEVLoadControlLimits()`
 - Frontend write controls with input fields and send button
 
+### OPEV (Overload Protection) - Write Controls Added (Latest)
+- Backend write function: `WriteOPEVLoadControlLimits()`
+- Frontend includes all 3 scenarios:
+  - Scenario 1: Display and send load control limits
+  - Scenario 2: Display current limits (min/max/default)
+  - Scenario 3: Heartbeat info (CEM sends to EVSE)
+- Frontend write controls with input fields and send button
+
+### Configuration System - Implemented (Latest)
+- **Backend**: 
+  - Added `Config` and `UsecaseConfig` structs
+  - Added `loadConfig()` function to read `config.json`
+  - Added `getDefaultConfig()` for fallback when file doesn't exist
+  - Conditional usecase initialization based on config
+  - New API endpoint: `GET /api/config` to serve config to frontend
+- **Frontend**:
+  - Added `loadConfig()` function to fetch config from backend
+  - Added `hideUsecase()` function to completely hide disabled usecases from UI
+  - Disabled usecases are hidden on page load
+- **Config File** (`config.json`):
+  - JSON format with enabled/disabled flags per usecase
+  - If file doesn't exist, all usecases enabled by default
+  - Located in same directory as executable
+  - No restart needed - just edit and restart application
+- **Documentation**: Updated AGENTS.md with configuration section
+
 ## Implementation Tasks
 
 ### High Priority
@@ -53,14 +79,9 @@
 - Add write functions for power limits and incentive tables
 - Add frontend controls for sending power limits
 
-### Medium Priority
-
-#### 2. OPEV Write Functions
-- Add write functions similar to OSCEV for overload protection limits
-
 ### Low Priority
 
-#### 3. EVCS (EV Charging Summary)
+#### 2. EVCS (EV Charging Summary)
 - Not yet available in eebus-go library. Mentioned in README as planned.
 
 ## eebus-go Library Usecases Reference
