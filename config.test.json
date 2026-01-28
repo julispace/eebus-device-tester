@@ -1,0 +1,44 @@
+{
+  "usecases": {
+    "lpc": {
+      "enabled": true,
+      "description": "Limitation of Power Consumption (EG)"
+    },
+    "lpp": {
+      "enabled": true,
+      "description": "Limitation of Power Production (EG)"
+    },
+    "evcc": {
+      "enabled": true,
+      "description": "EV Commissioning and Configuration (CEM)"
+    },
+    "evcem": {
+      "enabled": true,
+      "description": "EV Charging Electricity Measurement (CEM)"
+    },
+    "evsecc": {
+      "enabled": true,
+      "description": "EVSE Commissioning and Configuration (CEM)"
+    },
+    "cevc": {
+      "enabled": false,
+      "description": "Coordinated EV Charging (CEM) - DISABLED FOR TESTING"
+    },
+    "opev": {
+      "enabled": true,
+      "description": "Overload Protection by EV Charging Current Curtailment (CEM)"
+    },
+    "oscev": {
+      "enabled": true,
+      "description": "Optimization of Self-Consumption During EV Charging (CEM)"
+    },
+    "evsoc": {
+      "enabled": true,
+      "description": "EV State Of Charge (CEM)"
+    },
+    "mpc": {
+      "enabled": false,
+      "description": "Monitoring of Power Consumption (MA) - DISABLED FOR TESTING"
+    }
+  }
+}

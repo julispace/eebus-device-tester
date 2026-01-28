@@ -114,6 +114,53 @@
             font-weight: 600;
         }
 
+        /* Usecase section header with support status */
+        .usecase-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .usecase-header .usecase-label {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .support-badge {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+
+        .support-badge.supported {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .support-badge.unsupported {
+            background: #f3f4f6;
+            color: #6b7280;
+        }
+
+        /* Usecase content - greyed out when unsupported */
+        .usecase-content {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .usecase-content.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .usecase-content.disabled input,
+        .usecase-content.disabled button {
+            pointer-events: none;
+        }
+
         .data-label {
             font-size: 12px;
             color: var(--muted);
@@ -433,20 +480,16 @@
     <div class="top">
         <div class="card panel" id="leftColumn">
 
-            <section id="usecases" class="card" style="padding:12px">
-                <h3 style="margin:0 0 6px 0">Usecases</h3>
-                <div id="usecasesStatus" style="color:var(--muted);font-size:13px">Loading usecases...</div>
-                <div id="usecaseList" style="margin-top:8px"></div>
-            </section>
-
             <section id="dataControlPanel" class="card" style="padding:12px">
                 <h3 style="margin:0 0 6px 0">Data and Control</h3>
 
                 <div style="display:flex;flex-direction:column;gap:8px">
                     <!-- LPC-->
-                    <div class="usecase-label">LPC</div>
-                    <div id="lpcDisable" style="color:var(--muted);font-weight:600; display:flex;">not supported</div>
-                    <div id="lpcDisplay" style="display:none;flex-direction:column;">
+                    <div class="usecase-header">
+                        <div class="usecase-label">LPC</div>
+                        <span id="lpcBadge" class="support-badge unsupported">not supported</span>
+                    </div>
+                    <div id="lpcContent" class="usecase-content disabled">
                         <h5>Scenario 1 - Control active power consumption</h5>
                         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                             <div class="data-container">
@@ -514,9 +557,11 @@
 
                     <div style="height:1px;background:grey;margin:6px 0"></div>
                     <!-- LPP-->
-                    <div class="usecase-label">LPP</div>
-                    <div id="lppDisable" style="color:var(--muted);font-weight:600; display:flex;">not supported</div>
-                    <div id="lppDisplay" style="display:none;flex-direction:column;">
+                    <div class="usecase-header">
+                        <div class="usecase-label">LPP</div>
+                        <span id="lppBadge" class="support-badge unsupported">not supported</span>
+                    </div>
+                    <div id="lppContent" class="usecase-content disabled">
                         <h5>Scenario 1 - Control active power production</h5>
                         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                             <div class="data-container">
@@ -577,10 +622,11 @@
                     <div style="height:1px;background:grey;margin:6px 0"></div>
 
                     <!-- EVSECC-->
-                    <div class="usecase-label">EVSECC</div>
-                    <div id="evseccDisable" style="color:var(--muted);font-weight:600; display:flex;">not supported
+                    <div class="usecase-header">
+                        <div class="usecase-label">EVSECC</div>
+                        <span id="evseccBadge" class="support-badge unsupported">not supported</span>
                     </div>
-                    <div id="evseccDisplay" style="display:none;gap:8px;flex-wrap:wrap;align-items:center">
+                    <div id="evseccContent" class="usecase-content disabled">
                         <h5>Scenario 1 - EVSE sends manufacturer info</h5>
                         <div class="data-container">
                             <div class="data-label">Manufacturer Data</div>
@@ -597,15 +643,15 @@
                                 <div id="evseccErrorMessage" class="data-value">-</div>
                             </div>
                         </div>
-
                     </div>
                     <div style="height:1px;background:grey;margin:6px 0"></div>
 
                     <!-- EVCC-->
-                    <div class="usecase-label">EVCC</div>
-                    <div id="evccDisable" style="color:var(--muted);font-weight:600; display:flex;">not supported
+                    <div class="usecase-header">
+                        <div class="usecase-label">EVCC</div>
+                        <span id="evccBadge" class="support-badge unsupported">not supported</span>
                     </div>
-                    <div id="evccDisplay" style="display:none;gap:8px;flex-wrap:wrap;align-items:center">
+                    <div id="evccContent" class="usecase-content disabled">
                         <h5>Scenario 1 - EV Connected & Scenario 8 - EV disconnected</h5>
                         <div class="data-container">
                             <div class="data-label">Operating State</div>
@@ -657,10 +703,11 @@
                     <div style="height:1px;background:grey;margin:6px 0"></div>
 
                     <!-- EVCEM-->
-                    <div class="usecase-label">EVCEM</div>
-                    <div id="evcemDisable" style="color:var(--muted);font-weight:600; display:flex;">not supported
+                    <div class="usecase-header">
+                        <div class="usecase-label">EVCEM</div>
+                        <span id="evcemBadge" class="support-badge unsupported">not supported</span>
                     </div>
-                    <div id="evcemDisplay" style="display:none;gap:8px;flex-wrap:wrap;align-items:center">
+                    <div id="evcemContent" class="usecase-content disabled">
                         <h5>Scenario 1 - Measure EV Charging current</h5>
                         <div class="data-container">
                             <div class="data-label">Charging Current per Phase (A)</div>
@@ -678,6 +725,185 @@
                         </div>
                     </div>
                     <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                    <!-- OPEV-->
+                    <div class="usecase-header">
+                        <div class="usecase-label">OPEV</div>
+                        <span id="opevBadge" class="support-badge unsupported">not supported</span>
+                    </div>
+                    <div id="opevContent" class="usecase-content disabled">
+                        <h5>Scenario 1 - Energy Guard curtails charging current of EV</h5>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <div class="data-container">
+                                <div class="data-label">Load Control Limit (A)</div>
+                                <div id="opevLoadLimit" class="data-value">-</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                            <input id="writeOpevLimitValue" type="number" placeholder="limit (A)" style="width:90px" value="16"/>
+                            <label style="display:flex;align-items:center;gap:6px;margin:0"><input id="writeOpevLimitActive" type="checkbox" checked/> Active</label>
+                            <button id="sendWriteOpevLimit">Send Load Control Limit</button>
+                        </div>
+                        <h5>Scenario 2 - Current Limits</h5>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <div class="data-container">
+                                <div class="data-label">Minimum (A)</div>
+                                <div id="opevCurrentLimitMin" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Maximum (A)</div>
+                                <div id="opevCurrentLimitMax" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Default (A)</div>
+                                <div id="opevCurrentLimitDefault" class="data-value">-</div>
+                            </div>
+                        </div>
+                        <h5>Scenario 3 - Heartbeat</h5>
+                        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                            <div style="color:var(--muted);font-size:13px">CEM sends heartbeat to EVSE to indicate operational state</div>
+                        </div>
+                    </div>
+                    <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                    <!-- OSCEV-->
+                    <div class="usecase-header">
+                        <div class="usecase-label">OSCEV</div>
+                        <span id="oscevBadge" class="support-badge unsupported">not supported</span>
+                    </div>
+                    <div id="oscevContent" class="usecase-content disabled">
+                        <h5>Scenario 1 - CEM sends recommended charging power</h5>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <div class="data-container">
+                                <div class="data-label">Load Control Limit (A)</div>
+                                <div id="oscevLoadLimit" class="data-value">-</div>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                            <input id="writeOscevLimitValue" type="number" placeholder="limit (A)" style="width:90px" value="16"/>
+                            <label style="display:flex;align-items:center;gap:6px;margin:0"><input id="writeOscevLimitActive" type="checkbox" checked/> Active</label>
+                            <button id="sendWriteOscevLimit">Send Load Control Limit</button>
+                        </div>
+                        <h5>Scenario 2 - Current Limits</h5>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <div class="data-container">
+                                <div class="data-label">Minimum (A)</div>
+                                <div id="oscevCurrentLimitMin" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Maximum (A)</div>
+                                <div id="oscevCurrentLimitMax" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Default (A)</div>
+                                <div id="oscevCurrentLimitDefault" class="data-value">-</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                    <!-- EVSOC-->
+                    <div class="usecase-header">
+                        <div class="usecase-label">EVSOC</div>
+                        <span id="evsocBadge" class="support-badge unsupported">not supported</span>
+                    </div>
+                    <div id="evsocContent" class="usecase-content disabled">
+                        <h5>Scenario 1 - EV sends current state of charge</h5>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <div class="data-container">
+                                <div class="data-label">State of Charge (%)</div>
+                                <div id="evsocStateOfCharge" class="data-value">-</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                    <!-- CEVC-->
+                    <div class="usecase-header">
+                        <div class="usecase-label">CEVC</div>
+                        <span id="cevcBadge" class="support-badge unsupported">not supported</span>
+                    </div>
+                    <div id="cevcContent" class="usecase-content disabled">
+                        <h5>Charge Strategy</h5>
+                        <div class="data-container">
+                            <div class="data-label">Current Strategy</div>
+                            <div id="cevcChargeStrategy" class="data-value">-</div>
+                        </div>
+                        <h5>Energy Demand</h5>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <div class="data-container">
+                                <div class="data-label">Min Demand (Wh)</div>
+                                <div id="cevcMinDemand" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Opt Demand (Wh)</div>
+                                <div id="cevcOptDemand" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Max Demand (Wh)</div>
+                                <div id="cevcMaxDemand" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Duration Until Start (s)</div>
+                                <div id="cevcDurationStart" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Duration Until End (s)</div>
+                                <div id="cevcDurationEnd" class="data-value">-</div>
+                            </div>
+                        </div>
+                        <h5>Charge Plan</h5>
+                        <div class="data-container">
+                            <div class="data-label">Charge Plan Slots</div>
+                            <div id="cevcChargePlan" class="data-value" style="white-space:pre-wrap;font-size:11px;">-</div>
+                        </div>
+                    </div>
+                    <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                    <!-- MPC-->
+                    <div class="usecase-header">
+                        <div class="usecase-label">MPC</div>
+                        <span id="mpcBadge" class="support-badge unsupported">not supported</span>
+                    </div>
+                    <div id="mpcContent" class="usecase-content disabled">
+                        <h5>Power Measurements</h5>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <div class="data-container">
+                                <div class="data-label">Total Power (W)</div>
+                                <div id="mpcPower" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Power per Phase (W)</div>
+                                <div id="mpcPowerPerPhase" class="data-value">-</div>
+                            </div>
+                        </div>
+                        <h5>Current and Voltage</h5>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <div class="data-container">
+                                <div class="data-label">Current per Phase (A)</div>
+                                <div id="mpcCurrentPerPhase" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Voltage per Phase (V)</div>
+                                <div id="mpcVoltagePerPhase" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Frequency (Hz)</div>
+                                <div id="mpcFrequency" class="data-value">-</div>
+                            </div>
+                        </div>
+                        <h5>Energy</h5>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <div class="data-container">
+                                <div class="data-label">Energy Consumed (Wh)</div>
+                                <div id="mpcEnergyConsumed" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Energy Produced (Wh)</div>
+                                <div id="mpcEnergyProduced" class="data-value">-</div>
+                            </div>
+                        </div>
+                    </div>
 
                 </div>
 
@@ -803,18 +1029,10 @@
 
     document.getElementById("defaultOpen").click();
 
-    // Usecases
+    // Usecases - setUsecase updates display toggles for usecase panels
     function displaySupportedUsecases(list) {
-        const container = document.getElementById('usecaseList');
-        if (!container) return;
-        // dedupe by name
+        if (!list || list.length === 0) return;
         const seen = new Set();
-        container.innerHTML = '';
-        if (!list || list.length === 0) {
-            document.getElementById('usecasesStatus').textContent = 'No usecases available';
-            return;
-        }
-        document.getElementById('usecasesStatus').textContent = '';
         list.forEach(u => {
             if (!u || !u.name) return;
             if (seen.has(u.name)) return;
@@ -826,48 +1044,61 @@
     async function loadUsecases() {
         try {
             const res = await fetch('/api/usecases');
-            if (!res.ok) {
-                document.getElementById('usecasesStatus').textContent = 'Failed to load usecases';
-                return;
-            }
+            if (!res.ok) return;
             const list = await res.json();
             displaySupportedUsecases(list);
         } catch (err) {
-            document.getElementById('usecasesStatus').textContent = 'Error loading usecases: ' + err;
+            // ignore errors
         }
     }
 
-    function safeId(name) {
-        const n = String(name || '').trim().toLowerCase();
-        return 'uc-' + n.replace(/[^a-z0-9_-]/g, '_');
+    // Load config and hide disabled usecases
+    let usecaseConfig = {};
+    async function loadConfig() {
+        try {
+            const res = await fetch('/api/config');
+            if (!res.ok) {
+                console.warn('Failed to load config, all usecases will be visible');
+                return;
+            }
+            const config = await res.json();
+            usecaseConfig = config.usecases || {};
+            
+            // Hide disabled usecases by removing them from DOM
+            for (const [name, cfg] of Object.entries(usecaseConfig)) {
+                if (!cfg.enabled) {
+                    hideUsecase(name);
+                }
+            }
+        } catch (err) {
+            console.error('Error loading config:', err);
+        }
+    }
+
+    function hideUsecase(name) {
+        const n = name.toLowerCase();
+        // Find the usecase section (header + content + divider)
+        const header = document.querySelector(`.usecase-header:has(#${n}Badge)`);
+        if (!header) return;
+        
+        // Hide header
+        header.style.display = 'none';
+        
+        // Hide content
+        const content = document.getElementById(n + 'Content');
+        if (content) content.style.display = 'none';
+        
+        // Hide the divider after (next sibling)
+        let next = content ? content.nextElementSibling : header.nextElementSibling;
+        if (next && next.tagName === 'DIV' && next.style.height === '1px') {
+            next.style.display = 'none';
+        }
+        
+        console.log(`Usecase ${name} hidden by config`);
     }
 
     function setUsecase(name, supported) {
-        const container = document.getElementById('usecaseList');
-        if (!container) return;
-        const id = safeId(name);
-        // remove any existing elements with same id
-        const existing = document.getElementById(id);
-        if (existing) {
-            const span = existing.querySelector('.state');
-            if (span) {
-                span.textContent = supported ? 'supported' : 'unsupported';
-                span.className = 'state ' + (supported ? 'supported' : 'unsupported');
-            }
-            return;
-        }
-        // create new
-        const div = document.createElement('div');
-        div.className = 'usecase';
-        div.id = id;
-        const title = document.createElement('div');
-        title.textContent = name;
-        const state = document.createElement('div');
-        state.className = 'state ' + (supported ? 'supported' : 'unsupported');
-        state.textContent = supported ? 'supported' : 'unsupported';
-        div.appendChild(title);
-        div.appendChild(state);
-        container.appendChild(div);
+        // This function is overridden below to update the display panels
     }
 
     // --- Parsed trace handling helpers ---
@@ -1446,7 +1677,28 @@
             });
         }
 
+        // OSCEV write handlers
+        const sendWriteOscevLimitBtn = document.getElementById('sendWriteOscevLimit');
+        if (sendWriteOscevLimitBtn) {
+            sendWriteOscevLimitBtn.addEventListener('click', () => {
+                const val = parseFloat((document.getElementById('writeOscevLimitValue') || {}).value) || 0;
+                const active = !!(document.getElementById('writeOscevLimitActive') && document.getElementById('writeOscevLimitActive').checked);
+                apiWrite({cmd: 'writeOSCEVLoadControlLimits', value: val, isActive: active});
+            });
+        }
+
+        // OPEV write handlers
+        const sendWriteOpevLimitBtn = document.getElementById('sendWriteOpevLimit');
+        if (sendWriteOpevLimitBtn) {
+            sendWriteOpevLimitBtn.addEventListener('click', () => {
+                const val = parseFloat((document.getElementById('writeOpevLimitValue') || {}).value) || 0;
+                const active = !!(document.getElementById('writeOpevLimitActive') && document.getElementById('writeOpevLimitActive').checked);
+                apiWrite({cmd: 'writeOPEVLoadControlLimits', value: val, isActive: active});
+            });
+        }
+
         // initial poll
+        loadConfig(); // Load config first to hide disabled usecases
         fetchUsecaseData();
         loadUsecases();
         loadEntities();
@@ -1486,111 +1738,56 @@
     }
 
 
-    // initialize displays
-    fetchUsecaseData();
-    loadUsecases();
-    loadEntities();
-    setInterval(fetchUsecaseData, 2000);
-
-
     // display flags for features
     let lppSupported = false, lpcSupported = false, evseccSupported = false, evccSupported = false,
-        evcemSupported = false;
+        evcemSupported = false, opevSupported = false, oscevSupported = false, evsocSupported = false,
+        cevcSupported = false, mpcSupported = false;
 
-    function updateLPPDisplay(s) {
-        lppSupported = s;
-        const c = document.getElementById('lppDisplay'), d = document.getElementById('lppDisable');
-        if (c && d) {
-            if (s) {
-                c.style.display = 'flex';
-                d.style.display = 'none'
+    // Generic function to update usecase display using new Badge/Content pattern
+    function updateUsecaseDisplay(name, supported) {
+        const badge = document.getElementById(name + 'Badge');
+        const content = document.getElementById(name + 'Content');
+        if (badge) {
+            badge.textContent = supported ? 'supported' : 'not supported';
+            badge.className = 'support-badge ' + (supported ? 'supported' : 'unsupported');
+        }
+        if (content) {
+            if (supported) {
+                content.classList.remove('disabled');
             } else {
-                c.style.display = 'none';
-                d.style.display = 'flex'
+                content.classList.add('disabled');
             }
         }
     }
-
-
-    function updateEVCCDisplay(s) {
-        evccSupported = s;
-        const c = document.getElementById('evccDisplay'), d = document.getElementById('evccDisable');
-        if (c && d) {
-            if (s) {
-                c.style.display = 'flex';
-                d.style.display = 'none'
-            } else {
-                c.style.display = 'none';
-                d.style.display = 'flex'
-            }
-        }
-    }
-
-    function updateLPCDisplay(s) {
-        lpcSupported = s;
-        const c = document.getElementById('lpcDisplay'), d = document.getElementById('lpcDisable');
-        if (c && d) {
-            if (s) {
-                c.style.display = 'flex';
-                d.style.display = 'none'
-            } else {
-                c.style.display = 'none';
-                d.style.display = 'flex'
-            }
-        }
-    }
-
-    function updateEVSECCDisplay(s) {
-        evseccSupported = s;
-        const c = document.getElementById('evseccDisplay'), d = document.getElementById('evseccDisable');
-        if (c && d) {
-            if (s) {
-                c.style.display = 'flex';
-                d.style.display = 'none'
-            } else {
-                c.style.display = 'none';
-                d.style.display = 'flex'
-            }
-        }
-    }
-
-    function updateEVCEMDisplay(s) {
-        evcemSupported = s;
-        const c = document.getElementById('evcemDisplay'), d = document.getElementById('evcemDisable');
-        if (c && d) {
-            if (s) {
-                c.style.display = 'flex';
-                d.style.display = 'none'
-            } else {
-                c.style.display = 'none';
-                d.style.display = 'flex'
-            }
-        }
-    }
-
 
     const originalSetUsecase = setUsecase;
     setUsecase = function (name, supported) {
         originalSetUsecase(name, supported);
         try {
-            if (String(name || '').trim().toLowerCase() === 'lpp') {
-                updateLPPDisplay(supported);
-            } else if (String(name || '').trim().toLowerCase() === 'lpc') {
-                updateLPCDisplay(supported);
-            } else if (String(name || '').trim().toLowerCase() === 'evsecc') {
-                updateEVSECCDisplay(supported);
-            } else if (String(name || '').trim().toLowerCase() === 'evcc') {
-                updateEVCCDisplay(supported);
-            } else if (String(name || '').trim().toLowerCase() === 'evcem') {
-                updateEVCEMDisplay(supported);
-            }
+            const n = String(name || '').trim().toLowerCase();
+            // Update the supported flag variable
+            if (n === 'lpp') lppSupported = supported;
+            else if (n === 'lpc') lpcSupported = supported;
+            else if (n === 'evsecc') evseccSupported = supported;
+            else if (n === 'evcc') evccSupported = supported;
+            else if (n === 'evcem') evcemSupported = supported;
+            else if (n === 'opev') opevSupported = supported;
+            else if (n === 'oscev') oscevSupported = supported;
+            else if (n === 'evsoc') evsocSupported = supported;
+            else if (n === 'cevc') cevcSupported = supported;
+            else if (n === 'mpc') mpcSupported = supported;
+            // Update the display using the generic function
+            updateUsecaseDisplay(n, supported);
         } catch (e) {
         }
     }
 
-    // initialize default (hidden) state until usecases loaded
-    document.addEventListener('DOMContentLoaded', () => updateLPPDisplay(false));
-    document.addEventListener('DOMContentLoaded', () => updateLPCDisplay(false));
+    // initialize default (disabled) state until usecases loaded
+    document.addEventListener('DOMContentLoaded', () => {
+        ['lpp', 'lpc', 'evsecc', 'evcc', 'evcem', 'opev', 'oscev', 'evsoc', 'cevc', 'mpc'].forEach(uc => {
+            updateUsecaseDisplay(uc, false);
+        });
+    });
 
     // adjust fetchUsecaseData to only update LPP fields when supported
     const originalFetchLPP = fetchUsecaseData;
@@ -1671,13 +1868,103 @@
                 setText('evccChargingLimitsMax', d.evccLimitMaximum);
                 setText('evccChargingLimitsStandy', d.evccLimitStandby);
                 setText('evccSleepMode', d.evccSleepMode);
-                setText('evccIdentificationType', d.evccIdentifications[0].ValueType);
-                setText('evccIdentificationValue', d.evccIdentifications[0].Value);
+                if (d.evccIdentifications && Array.isArray(d.evccIdentifications) && d.evccIdentifications.length > 0) {
+                    setText('evccIdentificationType', d.evccIdentifications[0].ValueType);
+                    setText('evccIdentificationValue', d.evccIdentifications[0].Value);
+                } else {
+                    setText('evccIdentificationType', '-');
+                    setText('evccIdentificationValue', '-');
+                }
             }
             if(evcemSupported) {
                 setText('evcemChargingCurrent', d.evcemCurrentPerPhase);
                 setText('evcemChargingPower', d.evcemPowerPerPhase);
                 setText('evcemChargedEnergy', d.evcemEnergyCharged);
+            }
+            if (opevSupported) {
+                // Format load control limits - each has Value, IsActive, Phase
+                const formatLoadLimits = (limits) => {
+                    if (!limits || !Array.isArray(limits) || limits.length === 0) return '-';
+                    return limits.map(l => {
+                        const phase = l.Phase !== undefined ? `P${l.Phase}` : '';
+                        const val = l.Value !== undefined ? l.Value : '-';
+                        const active = l.IsActive ? ' (active)' : ' (inactive)';
+                        return `${phase}: ${val}A${active}`;
+                    }).join(', ');
+                };
+                // Format current limits array (simple float arrays per phase)
+                const formatCurrentArray = (arr) => {
+                    if (!arr || !Array.isArray(arr) || arr.length === 0) return '-';
+                    return arr.map((v, i) => `P${i + 1}: ${v}A`).join(', ');
+                };
+                setText('opevLoadLimit', formatLoadLimits(d.opevLoadControlLimit));
+                setText('opevCurrentLimitMin', formatCurrentArray(d.opevCurrentLimitMin));
+                setText('opevCurrentLimitMax', formatCurrentArray(d.opevCurrentLimitMax));
+                setText('opevCurrentLimitDefault', formatCurrentArray(d.opevCurrentLimitDefault));
+            }
+            if (oscevSupported) {
+                // Format load control limits - each has Value, IsActive, Phase
+                const formatLoadLimits = (limits) => {
+                    if (!limits || !Array.isArray(limits) || limits.length === 0) return '-';
+                    return limits.map(l => {
+                        const phase = l.Phase !== undefined ? `P${l.Phase}` : '';
+                        const val = l.Value !== undefined ? l.Value : '-';
+                        const active = l.IsActive ? ' (active)' : ' (inactive)';
+                        return `${phase}: ${val}A${active}`;
+                    }).join(', ');
+                };
+                // Format current limits array (simple float arrays per phase)
+                const formatCurrentArray = (arr) => {
+                    if (!arr || !Array.isArray(arr) || arr.length === 0) return '-';
+                    return arr.map((v, i) => `P${i + 1}: ${v}A`).join(', ');
+                };
+                setText('oscevLoadLimit', formatLoadLimits(d.oscevLoadControlLimit));
+                setText('oscevCurrentLimitMin', formatCurrentArray(d.oscevCurrentLimitMin));
+                setText('oscevCurrentLimitMax', formatCurrentArray(d.oscevCurrentLimitMax));
+                setText('oscevCurrentLimitDefault', formatCurrentArray(d.oscevCurrentLimitDefault));
+            }
+            if (evsocSupported) {
+                setText('evsocStateOfCharge', d.evsocStateOfCharge !== undefined ? d.evsocStateOfCharge.toFixed(1) : '-');
+            }
+            if (cevcSupported) {
+                setText('cevcChargeStrategy', d.cevcChargeStrategy);
+                // Energy demand fields
+                if (d.cevcEnergyDemand) {
+                    setText('cevcMinDemand', d.cevcEnergyDemand.MinDemand);
+                    setText('cevcOptDemand', d.cevcEnergyDemand.OptDemand);
+                    setText('cevcMaxDemand', d.cevcEnergyDemand.MaxDemand);
+                    setText('cevcDurationStart', d.cevcEnergyDemand.DurationUntilStart);
+                    setText('cevcDurationEnd', d.cevcEnergyDemand.DurationUntilEnd);
+                }
+                // Format charge plan slots
+                if (d.cevcChargePlan && d.cevcChargePlan.Slots && Array.isArray(d.cevcChargePlan.Slots)) {
+                    const planText = d.cevcChargePlan.Slots.map((slot, i) => {
+                        const start = slot.Start || 0;
+                        const end = slot.End || 0;
+                        const minPower = slot.MinPower !== undefined ? slot.MinPower : '-';
+                        const maxPower = slot.MaxPower !== undefined ? slot.MaxPower : '-';
+                        const minEnergy = slot.MinEnergy !== undefined ? slot.MinEnergy : '-';
+                        const maxEnergy = slot.MaxEnergy !== undefined ? slot.MaxEnergy : '-';
+                        return `Slot ${i + 1}: ${start}s - ${end}s | Power: ${minPower}W - ${maxPower}W | Energy: ${minEnergy}Wh - ${maxEnergy}Wh`;
+                    }).join('\n');
+                    setText('cevcChargePlan', planText || '-');
+                } else {
+                    setText('cevcChargePlan', '-');
+                }
+            }
+            if (mpcSupported) {
+                setText('mpcPower', d.mpcPower);
+                // Format per-phase arrays
+                const formatPhaseArray = (arr, unit) => {
+                    if (!arr || !Array.isArray(arr) || arr.length === 0) return '-';
+                    return arr.map((v, i) => `P${i + 1}: ${v}${unit}`).join(', ');
+                };
+                setText('mpcPowerPerPhase', formatPhaseArray(d.mpcPowerPerPhase, 'W'));
+                setText('mpcCurrentPerPhase', formatPhaseArray(d.mpcCurrentPerPhase, 'A'));
+                setText('mpcVoltagePerPhase', formatPhaseArray(d.mpcVoltagePerPhase, 'V'));
+                setText('mpcFrequency', d.mpcFrequency);
+                setText('mpcEnergyConsumed', d.mpcEnergyConsumed);
+                setText('mpcEnergyProduced', d.mpcEnergyProduced);
             }
 
         } catch (e) {
