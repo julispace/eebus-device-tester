@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"os/signal"
@@ -460,7 +461,7 @@ func (h *hems) HandleEgLPP(ski string, device spineapi.DeviceRemoteInterface, en
 		if err != nil {
 			fmt.Println("Error getting FailsafeDurationMinimum:", err)
 		} else {
-			h.usecaseData.LppFailsafeDur = minDur
+			h.usecaseData.LppFailsafeDur = minDur / time.Minute
 		}
 	case eglpp.DataUpdateFailsafeProductionActivePowerLimit:
 		powerLimit, err := h.uceglpp.FailsafeProductionActivePowerLimit(entity)
@@ -920,49 +921,66 @@ func (h *hems) WriteLPCFailsafeValue(failsafePowerLimit float64) {
 	}
 }
 
-// LPP Write Functions
-
 func (h *hems) WriteLPPProductionLimit(durationSeconds int64, value float64, active bool) error {
-	entities := h.uceglpp.RemoteEntitiesScenarios()
-	fmt.Println("Writing LPP Production Limit:", durationSeconds, value, active)
-	fmt.Println("Found entities:", entities)
-	var errs []string
-	for _, entity := range entities {
-		_, err := h.uceglpp.WriteProductionLimit(entity.Entity, ucapi.LoadLimit{
-			Duration:     time.Duration(durationSeconds) * time.Second,
-			IsChangeable: false,
-			IsActive:     active,
-			Value:        value,
-		}, nil)
-		if err != nil {
-			errStr := fmt.Sprintf("%v: %v", entity, err)
-			errs = append(errs, errStr)
-			fmt.Println("Error writing production limit:", err)
-		} else {
-			fmt.Println("Wrote production limit to entity", entity)
-		}
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("errors: %s", strings.Join(errs, "; "))
-	}
-	return nil
+    // Ensure the value is always negative for Production Limits (LPP)
+    // per EEBus sign convention: negative values limit production.
+    forcedNegativeValue := -math.Abs(value)
+
+    // iterate remote entities and write the provided production limit
+    entities := h.uceglpp.RemoteEntitiesScenarios()
+
+    fmt.Println("Writing LPP Production Limit:", durationSeconds, forcedNegativeValue, active)
+    
+    limit := ucapi.LoadLimit{
+        Duration: time.Duration(durationSeconds) * time.Second,
+        IsActive: active,
+        Value:    forcedNegativeValue,
+    }
+    
+    fmt.Println("Found entities:", entities)
+    var errs []string
+    resultCB := func(msg model.ResultDataType) {
+        if *msg.ErrorNumber == model.ErrorNumberTypeNoError {
+            fmt.Println("Production limit accepted.")
+        } else {
+            fmt.Println("Production limit rejected. Code", *msg.ErrorNumber, "Description", *msg.Description)
+        }
+    }
+    
+    for _, entity := range entities {
+        _, err := h.uceglpp.WriteProductionLimit(entity.Entity, limit, resultCB)
+        if err != nil {
+            errStr := fmt.Sprintf("%v: %v", entity, err)
+            errs = append(errs, errStr)
+            fmt.Println("Error writing production limit:", err)
+        } else {
+            fmt.Println("Wrote production limit to entity", entity)
+        }
+    }
+    
+    if len(errs) > 0 {
+        return fmt.Errorf("errors: %s", strings.Join(errs, "; "))
+    }
+    return nil
 }
 
 func (h *hems) WriteLPPFailsafeDuration(minDuration time.Duration) {
+	// iterate remote entities and write the failsafe duration
 	entities := h.uceglpp.RemoteEntitiesScenarios()
 	fmt.Println("Writing LPP Failsafe Duration:", minDuration)
 	fmt.Println("Found entities:", entities)
 	for _, entity := range entities {
 		_, err := h.uceglpp.WriteFailsafeDurationMinimum(entity.Entity, minDuration)
 		if err != nil {
-			fmt.Println("Error writing LPP failsafeDurationMinimum:", err)
+			fmt.Println("Error writing failsafeDurationMinimum:", err)
 		} else {
-			fmt.Println("Wrote LPP failsafeDurationMinimum to entity", entity)
+			fmt.Println("Wrote failsafeDurationMinimum to entity", entity)
 		}
 	}
 }
 
 func (h *hems) WriteLPPFailsafeValue(failsafePowerLimit float64) {
+	// iterate remote entities and write the failsafe power limit
 	entities := h.uceglpp.RemoteEntitiesScenarios()
 	fmt.Println("Writing LPP Failsafe Power Limit:", failsafePowerLimit)
 	fmt.Println("Found entities:", entities)
@@ -1316,6 +1334,11 @@ func (h *hems) startWebInterface() {
 		}
 	}
 
+	webAddr := "localhost"
+	if v := os.Getenv("WEB_ADDR"); v != "" {
+		webAddr = v
+	}
+
 	// initialize wsConns map
 	h.wsMu.Lock()
 	h.wsConns = make(map[*websocket.Conn]struct{})
@@ -1666,7 +1689,7 @@ func (h *hems) startWebInterface() {
 		http.ServeFile(w, r, absFilePath)
 	})
 
-	addr := fmt.Sprintf("localhost:%d", webPort)
+	addr := fmt.Sprintf("%s:%d", webAddr, webPort)
 	h.Infof("Starting web interface on %s", addr)
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		h.Errorf("web interface stopped: %v", err)

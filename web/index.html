@@ -578,10 +578,15 @@
                             </div>
                         </div>
                         <div style="display:flex; gap:8px; align-items:center;">
-                            <input id="writeLppLimitValue" type="number" placeholder="value (W)" style="width:90px" value="3600"/>
-                            <input id="writeLppLimitDurationSec" type="number" placeholder="duration (s)" style="width:90px" value="600"/>
-                            <label style="display:flex;align-items:center;gap:6px;margin:0"><input id="writeLppLimitActive" type="checkbox" checked/> Active</label>
-                            <button id="sendWriteLppLimit">Send Production Limit</button>
+                            <input id="writeLPPLimitValue" type="number" placeholder="value (W)" style="width:90px"
+                                   value="3600"/>
+                            <input id="writeLPPLimitDurationSec" type="number" placeholder="duration (s)"
+                                   style="width:90px" value="600"/>
+                            <label style="display:flex;align-items:center;gap:6px;margin:0"><input id="writeLPPLimitActive"
+                                                                                                   type="checkbox"
+                                                                                                   checked/>
+                                Active</label>
+                            <button id="sendWriteLPPLimit">Send Production Limit</button>
                         </div>
                         <h5>Scenario 2 - Failsafe</h5>
                         <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
@@ -595,10 +600,23 @@
                             </div>
                         </div>
                         <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
-                            <input id="writeLppFailsafePower" type="number" placeholder="failsafe power (W)" style="width:120px" value="2500"/>
-                            <input id="writeLppFailsafeDurationMin" type="number" placeholder="duration (min)" style="width:120px" value="300"/>
-                            <button id="sendWriteLppFailsafePower">Send Failsafe Power</button>
-                            <button id="sendWriteLppFailsafeDuration">Send Failsafe Duration</button>
+                            <input id="writeLPPFailsafePower" type="number" placeholder="failsafe power (W)"
+                                   style="width:120px" value="2500"/>
+                            <input id="writeLPPFailsafeDurationMin" type="number" placeholder="duration (min)"
+                                   style="width:120px" value="300"/>
+                            <button id="sendWriteLPPFailsafePower">Send Failsafe Power</button>
+                            <button id="sendWriteLPPFailsafeDuration">Send Failsafe Duration</button>
+                        </div>
+                        <h5>Scenario 3 - Heartbeat</h5>
+                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                            <div class="data-container">
+                                <div class="data-label">Heartbeat Received</div>
+                                <div id="lppHeartbeat" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Last Heartbeat Time</div>
+                                <div id="lppHeartbeatTimestamp" class="data-value">-</div>
+                            </div>
                         </div>
                     </div>
                     <div style="height:1px;background:grey;margin:6px 0"></div>
@@ -1604,6 +1622,8 @@
         // sanitize duration inputs to integers where required
         intInputSanitize(document.getElementById('writeLimitDurationSec'));
         intInputSanitize(document.getElementById('writeFailsafeDurationMin'));
+        intInputSanitize(document.getElementById('writeLPPLimitDurationSec'));
+        intInputSanitize(document.getElementById('writeLPPFailsafeDurationMin'));
 
         const sendWriteLimitBtn = document.getElementById('sendWriteLimit');
         if (sendWriteLimitBtn) {
@@ -1631,29 +1651,28 @@
             });
         }
 
-        // LPP write handlers
-        const sendWriteLppLimitBtn = document.getElementById('sendWriteLppLimit');
-        if (sendWriteLppLimitBtn) {
-            sendWriteLppLimitBtn.addEventListener('click', () => {
-                const val = parseFloat((document.getElementById('writeLppLimitValue') || {}).value) || 0;
-                const dur = parseInt((document.getElementById('writeLppLimitDurationSec') || {}).value, 10) || 0;
-                const active = !!(document.getElementById('writeLppLimitActive') && document.getElementById('writeLppLimitActive').checked);
+        const sendWriteLPPLimitBtn = document.getElementById('sendWriteLPPLimit');
+        if (sendWriteLPPLimitBtn) {
+            sendWriteLPPLimitBtn.addEventListener('click', () => {
+                const val = parseFloat((document.getElementById('writeLPPLimitValue') || {}).value) || 0;
+                const dur = parseInt((document.getElementById('writeLPPLimitDurationSec') || {}).value, 10) || 0;
+                const active = !!(document.getElementById('writeLPPLimitActive') && document.getElementById('writeLPPLimitActive').checked);
                 apiWrite({cmd: 'writeLPPProductionLimit', durationSeconds: dur, value: val, isActive: active});
             });
         }
 
-        const sendLppFailsafePower = document.getElementById('sendWriteLppFailsafePower');
-        if (sendLppFailsafePower) {
-            sendLppFailsafePower.addEventListener('click', () => {
-                const p = parseFloat((document.getElementById('writeLppFailsafePower') || {}).value) || 0;
+        const sendLPPFailsafePower = document.getElementById('sendWriteLPPFailsafePower');
+        if (sendLPPFailsafePower) {
+            sendLPPFailsafePower.addEventListener('click', () => {
+                const p = parseFloat((document.getElementById('writeLPPFailsafePower') || {}).value) || 0;
                 apiWrite({cmd: 'writeLPPFailsafeValue', failsafePower: p});
             });
         }
 
-        const sendLppFailsafeDur = document.getElementById('sendWriteLppFailsafeDuration');
-        if (sendLppFailsafeDur) {
-            sendLppFailsafeDur.addEventListener('click', () => {
-                const m = parseInt((document.getElementById('writeLppFailsafeDurationMin') || {}).value, 10) || 0;
+        const sendLPPFailsafeDur = document.getElementById('sendWriteLPPFailsafeDuration');
+        if (sendLPPFailsafeDur) {
+            sendLPPFailsafeDur.addEventListener('click', () => {
+                const m = parseInt((document.getElementById('writeLPPFailsafeDurationMin') || {}).value, 10) || 0;
                 apiWrite({cmd: 'writeLPPFailsafeDuration', durationMinutes: m});
             });
         }
@@ -1832,6 +1851,8 @@
                 setText('lppLimitValue', d.lppLimitValue);
                 setText('lppLimitDur', d.lppLimitDurationSeconds);
                 setText('lppLimitActive', (d.lppLimitActive !== undefined) ? (d.lppLimitActive ? 'yes' : 'no') : '-');
+                setText('lppHeartbeat', d.lppHeartbeatOk)
+                setText('lppHeartbeatTimestamp', d.lppHeartbeatTimestamp)
             }
             if (evseccSupported) {
                 setManufacturer('evseccManufacturer', d.evseccManufacturerData);
