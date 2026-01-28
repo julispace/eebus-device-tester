@@ -744,7 +744,6 @@
                             <label style="display:flex;align-items:center;gap:6px;margin:0"><input id="writeOpevLimitActive" type="checkbox" checked/> Active</label>
                             <button id="sendWriteOpevLimit">Send Load Control Limit</button>
                         </div>
-                        <h5>Scenario 2 - Current Limits</h5>
                         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                             <div class="data-container">
                                 <div class="data-label">Minimum (A)</div>
@@ -758,10 +757,14 @@
                                 <div class="data-label">Default (A)</div>
                                 <div id="opevCurrentLimitDefault" class="data-value">-</div>
                             </div>
+                        <h5>Scenario 2 - EV Checks Energy Guard availability</h5>
+                            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                                <div style="color:var(--muted);font-size:13px">CEM sends heartbeat to EVSE to indicate operational state</div>
+                            </div>
                         </div>
-                        <h5>Scenario 3 - Heartbeat</h5>
+                        <h5>Scenario 3 - Energy Guard sends error state</h5>
                         <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-                            <div style="color:var(--muted);font-size:13px">CEM sends heartbeat to EVSE to indicate operational state</div>
+                            <div style="color:var(--muted);font-size:13px">CEM sends error state to EVSE to indicate operational state</div>
                         </div>
                     </div>
                     <div style="height:1px;background:grey;margin:6px 0"></div>
@@ -1063,7 +1066,7 @@
             }
             const config = await res.json();
             usecaseConfig = config.usecases || {};
-            
+
             // Hide disabled usecases by removing them from DOM
             for (const [name, cfg] of Object.entries(usecaseConfig)) {
                 if (!cfg.enabled) {
@@ -1080,20 +1083,20 @@
         // Find the usecase section (header + content + divider)
         const header = document.querySelector(`.usecase-header:has(#${n}Badge)`);
         if (!header) return;
-        
+
         // Hide header
         header.style.display = 'none';
-        
+
         // Hide content
         const content = document.getElementById(n + 'Content');
         if (content) content.style.display = 'none';
-        
+
         // Hide the divider after (next sibling)
         let next = content ? content.nextElementSibling : header.nextElementSibling;
         if (next && next.tagName === 'DIV' && next.style.height === '1px') {
             next.style.display = 'none';
         }
-        
+
         console.log(`Usecase ${name} hidden by config`);
     }
 

@@ -922,46 +922,46 @@ func (h *hems) WriteLPCFailsafeValue(failsafePowerLimit float64) {
 }
 
 func (h *hems) WriteLPPProductionLimit(durationSeconds int64, value float64, active bool) error {
-    // Ensure the value is always negative for Production Limits (LPP)
-    // per EEBus sign convention: negative values limit production.
-    forcedNegativeValue := -math.Abs(value)
+	// Ensure the value is always negative for Production Limits (LPP)
+	// per EEBus sign convention: negative values limit production.
+	forcedNegativeValue := -math.Abs(value)
 
-    // iterate remote entities and write the provided production limit
-    entities := h.uceglpp.RemoteEntitiesScenarios()
+	// iterate remote entities and write the provided production limit
+	entities := h.uceglpp.RemoteEntitiesScenarios()
 
-    fmt.Println("Writing LPP Production Limit:", durationSeconds, forcedNegativeValue, active)
-    
-    limit := ucapi.LoadLimit{
-        Duration: time.Duration(durationSeconds) * time.Second,
-        IsActive: active,
-        Value:    forcedNegativeValue,
-    }
-    
-    fmt.Println("Found entities:", entities)
-    var errs []string
-    resultCB := func(msg model.ResultDataType) {
-        if *msg.ErrorNumber == model.ErrorNumberTypeNoError {
-            fmt.Println("Production limit accepted.")
-        } else {
-            fmt.Println("Production limit rejected. Code", *msg.ErrorNumber, "Description", *msg.Description)
-        }
-    }
-    
-    for _, entity := range entities {
-        _, err := h.uceglpp.WriteProductionLimit(entity.Entity, limit, resultCB)
-        if err != nil {
-            errStr := fmt.Sprintf("%v: %v", entity, err)
-            errs = append(errs, errStr)
-            fmt.Println("Error writing production limit:", err)
-        } else {
-            fmt.Println("Wrote production limit to entity", entity)
-        }
-    }
-    
-    if len(errs) > 0 {
-        return fmt.Errorf("errors: %s", strings.Join(errs, "; "))
-    }
-    return nil
+	fmt.Println("Writing LPP Production Limit:", durationSeconds, forcedNegativeValue, active)
+
+	limit := ucapi.LoadLimit{
+		Duration: time.Duration(durationSeconds) * time.Second,
+		IsActive: active,
+		Value:    forcedNegativeValue,
+	}
+
+	fmt.Println("Found entities:", entities)
+	var errs []string
+	resultCB := func(msg model.ResultDataType) {
+		if *msg.ErrorNumber == model.ErrorNumberTypeNoError {
+			fmt.Println("Production limit accepted.")
+		} else {
+			fmt.Println("Production limit rejected. Code", *msg.ErrorNumber, "Description", *msg.Description)
+		}
+	}
+
+	for _, entity := range entities {
+		_, err := h.uceglpp.WriteProductionLimit(entity.Entity, limit, resultCB)
+		if err != nil {
+			errStr := fmt.Sprintf("%v: %v", entity, err)
+			errs = append(errs, errStr)
+			fmt.Println("Error writing production limit:", err)
+		} else {
+			fmt.Println("Wrote production limit to entity", entity)
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("errors: %s", strings.Join(errs, "; "))
+	}
+	return nil
 }
 
 func (h *hems) WriteLPPFailsafeDuration(minDuration time.Duration) {
@@ -1133,7 +1133,7 @@ func (h *hems) Debug(args ...interface{}) {
 	h.appendLog(strings.TrimRight(line, "\n"))
 	if enableDebugLogging {
 		fmt.Printf("%s", line)
-		if strings.Contains(line, "operation is not supported") {
+		if strings.Contains(line, "operation is not supported") || strings.Contains(line, "data not available") {
 			debug.PrintStack()
 		}
 	}
