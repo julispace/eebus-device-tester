@@ -5,7 +5,7 @@
       "description": "Limitation of Power Consumption (EG)"
     },
     "lpp": {
-      "enabled": false,
+      "enabled": true,
       "description": "Limitation of Power Production (EG)"
     },
     "evcc": {
@@ -21,7 +21,7 @@
       "description": "EVSE Commissioning and Configuration (CEM)"
     },
     "cevc": {
-      "enabled": false,
+      "enabled": true,
       "description": "Coordinated EV Charging (CEM)"
     },
     "opev": {
@@ -29,16 +29,20 @@
       "description": "Overload Protection by EV Charging Current Curtailment (CEM)"
     },
     "oscev": {
-      "enabled": false,
+      "enabled": true,
       "description": "Optimization of Self-Consumption During EV Charging (CEM)"
     },
     "evsoc": {
-      "enabled": false,
+      "enabled": true,
       "description": "EV State Of Charge (CEM)"
     },
     "mpc": {
-      "enabled": false,
+      "enabled": true,
       "description": "Monitoring of Power Consumption (MA)"
     }
+  },
+  "logging": {
+    "enableDebug": true,
+    "enableTrace": true
   }
 }

@@ -34,6 +34,7 @@ import (
 	cemevsecc "github.com/enbility/eebus-go/usecases/cem/evsecc"
 	eglpc "github.com/enbility/eebus-go/usecases/eg/lpc"
 	eglpp "github.com/enbility/eebus-go/usecases/eg/lpp"
+	mamgrp "github.com/enbility/eebus-go/usecases/ma/mgcp"
 	mampc "github.com/enbility/eebus-go/usecases/ma/mpc"
 
 	shipapi "github.com/enbility/ship-go/api"
@@ -43,18 +44,23 @@ import (
 )
 
 var remoteSki string
-var enableDebugLogging = false
-var enableTraceLogging = false
 
 // Config represents the application configuration
 type Config struct {
 	Usecases map[string]UsecaseConfig `json:"usecases"`
+	Logging  LoggingConfig            `json:"logging"`
 }
 
 // UsecaseConfig represents configuration for a single usecase
 type UsecaseConfig struct {
 	Enabled     bool   `json:"enabled"`
 	Description string `json:"description"`
+}
+
+// LoggingConfig represents logging configuration
+type LoggingConfig struct {
+	EnableDebug bool `json:"enableDebug"`
+	EnableTrace bool `json:"enableTrace"`
 }
 
 // loadConfig loads the config.json file or returns default config if file doesn't exist
@@ -93,6 +99,10 @@ func getDefaultConfig() *Config {
 			"oscev":  {Enabled: true, Description: "Optimization of Self-Consumption During EV Charging (CEM)"},
 			"evsoc":  {Enabled: true, Description: "EV State Of Charge (CEM)"},
 			"mpc":    {Enabled: true, Description: "Monitoring of Power Consumption (MA)"},
+		},
+		Logging: LoggingConfig{
+			EnableDebug: true,
+			EnableTrace: true,
 		},
 	}
 }
@@ -518,12 +528,14 @@ func (h *hems) HandleEgLPC(ski string, device spineapi.DeviceRemoteInterface, en
 	case eglpc.DataUpdateHeartbeat:
 		h.usecaseData.LpcHeartbeatOk = h.uceglpc.IsHeartbeatWithinDuration(entity)
 		h.usecaseData.LpcHeartbeatTimestamp = time.Now()
+	default:
+		nominal, err := h.uceglpc.ConsumptionNominalMax(entity)
+		if err != nil {
+			fmt.Println("Error getting ConsumptionNominalMax:", err)
+		} else {
+			h.usecaseData.LpcConsumptionLimitNominalMax = nominal
+		}
 	}
-	nominal, err := h.uceglpc.ConsumptionNominalMax(entity)
-	if err == nil {
-		h.usecaseData.LpcConsumptionLimitNominalMax = nominal
-	}
-
 	h.updateEntitiesFromDevice(device)
 }
 
@@ -1109,7 +1121,7 @@ func (h *hems) Trace(args ...interface{}) {
 	line := fmt.Sprintf("%s TRACE %s", ts, value)
 	h.appendLog(strings.TrimRight(line, "\n"))
 	// still print to stdout if enabled
-	if enableTraceLogging {
+	if h.config.Logging.EnableTrace {
 		fmt.Printf("%s", line)
 	}
 }
@@ -1120,7 +1132,7 @@ func (h *hems) Tracef(format string, args ...interface{}) {
 	ts := h.currentTimestamp()
 	line := fmt.Sprintf("%s TRACEF %s", ts, value)
 	h.appendLog(strings.TrimRight(line, "\n"))
-	if enableTraceLogging {
+	if h.config.Logging.EnableTrace {
 		fmt.Println(line)
 	}
 }
@@ -1131,7 +1143,7 @@ func (h *hems) Debug(args ...interface{}) {
 	ts := h.currentTimestamp()
 	line := fmt.Sprintf("%s DEBUG %s", ts, value)
 	h.appendLog(strings.TrimRight(line, "\n"))
-	if enableDebugLogging {
+	if h.config.Logging.EnableDebug {
 		fmt.Printf("%s", line)
 		if strings.Contains(line, "operation is not supported") || strings.Contains(line, "data not available") {
 			debug.PrintStack()
@@ -1145,7 +1157,7 @@ func (h *hems) Debugf(format string, args ...interface{}) {
 	ts := h.currentTimestamp()
 	line := fmt.Sprintf("%s DEBUGF %s", ts, value)
 	h.appendLog(strings.TrimRight(line, "\n"))
-	if enableDebugLogging {
+	if h.config.Logging.EnableDebug {
 		fmt.Println(line)
 		if strings.Contains(line, "operation is not supported") {
 			debug.PrintStack()

@@ -216,9 +216,21 @@ The application supports runtime configuration via `config.json` to enable/disab
       "enabled": true,
       "description": "Monitoring of Power Consumption (MA)"
     }
+  },
+  "logging": {
+    "enableDebug": true,
+    "enableTrace": true
   }
 }
 ```
+
+#### Logging Configuration
+
+The `logging` section controls stdout logging output:
+- `enableDebug`: Enable/disable DEBUG level logging to stdout (default: `true`)
+- `enableTrace`: Enable/disable TRACE level logging to stdout (default: `true`)
+
+**Note:** Logs are always sent to the frontend via WebSocket regardless of these settings. These flags only control console output.
 
 ### Configuration Behavior
 

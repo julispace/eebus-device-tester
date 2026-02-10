@@ -53,7 +53,17 @@
   - Scenario 3: Heartbeat info (CEM sends to EVSE)
 - Frontend write controls with input fields and send button
 
-### Configuration System - Implemented (Latest)
+### Logging Configuration - Moved to Config (Latest)
+- **Backend**:
+  - Moved `enableDebugLogging` and `enableTraceLogging` from global variables in main.go to config
+  - Added `LoggingConfig` struct with `enableDebug` and `enableTrace` fields
+  - Updated `Trace()`, `Tracef()`, `Debug()`, `Debugf()` methods to use config values
+  - Both enabled by default when using default config
+- **Config File** (`config.json`):
+  - Added `logging` section with `enableDebug` and `enableTrace` options
+  - Default values are `true` for both
+
+### Configuration System - Implemented
 - **Backend**: 
   - Added `Config` and `UsecaseConfig` structs
   - Added `loadConfig()` function to read `config.json`
