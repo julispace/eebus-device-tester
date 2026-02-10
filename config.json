@@ -39,6 +39,10 @@
     "mpc": {
       "enabled": true,
       "description": "Monitoring of Power Consumption (MA)"
+    },
+    "mgcp": {
+      "enabled": true,
+      "description": "Monitoring of Grid Connection Point (MA)"
     }
   },
   "logging": {

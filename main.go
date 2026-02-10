@@ -99,6 +99,7 @@ func getDefaultConfig() *Config {
 			"oscev":  {Enabled: true, Description: "Optimization of Self-Consumption During EV Charging (CEM)"},
 			"evsoc":  {Enabled: true, Description: "EV State Of Charge (CEM)"},
 			"mpc":    {Enabled: true, Description: "Monitoring of Power Consumption (MA)"},
+			"mgcp":   {Enabled: true, Description: "Monitoring of Grid Connection Point (MA)"},
 		},
 		Logging: LoggingConfig{
 			EnableDebug: true,
@@ -183,6 +184,14 @@ type usecaseData struct {
 	MpcVoltagePerPhase []float64 `json:"mpcVoltagePerPhase,omitempty"`
 	MpcEnergyConsumed  float64   `json:"mpcEnergyConsumed,omitempty"`
 	MpcEnergyProduced  float64   `json:"mpcEnergyProduced,omitempty"`
+	// MGCP usecase data
+	MgcPowerLimitationFactor float64   `json:"mgcPowerLimitationFactor,omitempty"`
+	MgcPower                 float64   `json:"mgcPower,omitempty"`
+	MgcEnergyFeedIn          float64   `json:"mgcEnergyFeedIn,omitempty"`
+	MgcEnergyConsumed        float64   `json:"mgcEnergyConsumed,omitempty"`
+	MgcCurrentPerPhase       []float64 `json:"mgcCurrentPerPhase,omitempty"`
+	MgcVoltagePerPhase       []float64 `json:"mgcVoltagePerPhase,omitempty"`
+	MgcFrequency             float64   `json:"mgcFrequency,omitempty"`
 	// OPEV usecase data
 	OpevLoadControlLimit    []ucapi.LoadLimitsPhase `json:"opevLoadControlLimit,omitempty"`
 	OpevCurrentLimitMin     []float64               `json:"opevCurrentLimitMin,omitempty"`
@@ -217,6 +226,7 @@ type hems struct {
 	uceglpp     ucapi.EgLPPInterface
 	uccemcevc   ucapi.CemCEVCInterface
 	ucmampc     ucapi.MaMPCInterface
+	ucmamgrp    ucapi.MaMGCPInterface
 
 	// in-memory log buffer for trace/debug/info output
 	logMu   sync.Mutex
@@ -412,6 +422,16 @@ func (h *hems) run() {
 		fmt.Println("Usecase MPC enabled")
 	} else {
 		fmt.Println("Usecase MPC disabled by config")
+	}
+
+	// MGCP
+	if isEnabled("mgcp") {
+		h.ucmamgrp = mamgrp.NewMGCP(localEntity, h.HandleMaMGCP)
+		h.myService.AddUseCase(h.ucmamgrp)
+		h.setUsecaseSupported("MGCP", false)
+		fmt.Println("Usecase MGCP enabled")
+	} else {
+		fmt.Println("Usecase MGCP disabled by config")
 	}
 
 	// OPEV
@@ -797,6 +817,65 @@ func (h *hems) HandleMaMpc(ski string, device spineapi.DeviceRemoteInterface, en
 			fmt.Println("Error getting VoltagePerPhase:", err)
 		} else {
 			h.usecaseData.MpcVoltagePerPhase = voltages
+		}
+	}
+	h.updateEntitiesFromDevice(device)
+}
+
+// HandleMaMGCP MaMGCP Handler (Monitoring of Grid Connection Point)
+func (h *hems) HandleMaMGCP(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
+	fmt.Println("MaMGCP Event: ", event)
+	switch event {
+	case mamgrp.UseCaseSupportUpdate:
+		h.setUsecaseSupported("MGCP", true)
+	case mamgrp.DataUpdatePowerLimitationFactor:
+		factor, err := h.ucmamgrp.PowerLimitationFactor(entity)
+		if err != nil {
+			fmt.Println("Error getting PowerLimitationFactor:", err)
+		} else {
+			h.usecaseData.MgcPowerLimitationFactor = factor
+		}
+	case mamgrp.DataUpdatePower:
+		power, err := h.ucmamgrp.Power(entity)
+		if err != nil {
+			fmt.Println("Error getting MGCP Power:", err)
+		} else {
+			h.usecaseData.MgcPower = power
+		}
+	case mamgrp.DataUpdateEnergyFeedIn:
+		feedIn, err := h.ucmamgrp.EnergyFeedIn(entity)
+		if err != nil {
+			fmt.Println("Error getting EnergyFeedIn:", err)
+		} else {
+			h.usecaseData.MgcEnergyFeedIn = feedIn
+		}
+	case mamgrp.DataUpdateEnergyConsumed:
+		consumed, err := h.ucmamgrp.EnergyConsumed(entity)
+		if err != nil {
+			fmt.Println("Error getting MGCP EnergyConsumed:", err)
+		} else {
+			h.usecaseData.MgcEnergyConsumed = consumed
+		}
+	case mamgrp.DataUpdateCurrentPerPhase:
+		currents, err := h.ucmamgrp.CurrentPerPhase(entity)
+		if err != nil {
+			fmt.Println("Error getting MGCP CurrentPerPhase:", err)
+		} else {
+			h.usecaseData.MgcCurrentPerPhase = currents
+		}
+	case mamgrp.DataUpdateVoltagePerPhase:
+		voltages, err := h.ucmamgrp.VoltagePerPhase(entity)
+		if err != nil {
+			fmt.Println("Error getting MGCP VoltagePerPhase:", err)
+		} else {
+			h.usecaseData.MgcVoltagePerPhase = voltages
+		}
+	case mamgrp.DataUpdateFrequency:
+		frequency, err := h.ucmamgrp.Frequency(entity)
+		if err != nil {
+			fmt.Println("Error getting MGCP Frequency:", err)
+		} else {
+			h.usecaseData.MgcFrequency = frequency
 		}
 	}
 	h.updateEntitiesFromDevice(device)

@@ -908,6 +908,51 @@
                         </div>
                     </div>
 
+                    <!-- MGCP-->
+                    <div class="usecase-header">
+                        <div class="usecase-label">MGCP</div>
+                        <span id="mgcpBadge" class="support-badge unsupported">not supported</span>
+                    </div>
+                    <div id="mgcpContent" class="usecase-content disabled">
+                        <h5>Grid Connection Point Data</h5>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <div class="data-container">
+                                <div class="data-label">Power (W)</div>
+                                <div id="mgcpPower" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Power Limitation Factor (%)</div>
+                                <div id="mgcpPowerLimitationFactor" class="data-value">-</div>
+                            </div>
+                        </div>
+                        <h5>Current and Voltage</h5>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <div class="data-container">
+                                <div class="data-label">Current per Phase (A)</div>
+                                <div id="mgcpCurrentPerPhase" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Voltage per Phase (V)</div>
+                                <div id="mgcpVoltagePerPhase" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Frequency (Hz)</div>
+                                <div id="mgcpFrequency" class="data-value">-</div>
+                            </div>
+                        </div>
+                        <h5>Energy</h5>
+                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                            <div class="data-container">
+                                <div class="data-label">Energy Feed In (Wh)</div>
+                                <div id="mgcpEnergyFeedIn" class="data-value">-</div>
+                            </div>
+                            <div class="data-container">
+                                <div class="data-label">Energy Consumed (Wh)</div>
+                                <div id="mgcpEnergyConsumed" class="data-value">-</div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
 
             </section>
@@ -1744,7 +1789,7 @@
     // display flags for features
     let lppSupported = false, lpcSupported = false, evseccSupported = false, evccSupported = false,
         evcemSupported = false, opevSupported = false, oscevSupported = false, evsocSupported = false,
-        cevcSupported = false, mpcSupported = false;
+        cevcSupported = false, mpcSupported = false, mgcpSupported = false;
 
     // Generic function to update usecase display using new Badge/Content pattern
     function updateUsecaseDisplay(name, supported) {
@@ -1779,6 +1824,7 @@
             else if (n === 'evsoc') evsocSupported = supported;
             else if (n === 'cevc') cevcSupported = supported;
             else if (n === 'mpc') mpcSupported = supported;
+            else if (n === 'mgcp') mgcpSupported = supported;
             // Update the display using the generic function
             updateUsecaseDisplay(n, supported);
         } catch (e) {
@@ -1787,7 +1833,7 @@
 
     // initialize default (disabled) state until usecases loaded
     document.addEventListener('DOMContentLoaded', () => {
-        ['lpp', 'lpc', 'evsecc', 'evcc', 'evcem', 'opev', 'oscev', 'evsoc', 'cevc', 'mpc'].forEach(uc => {
+        ['lpp', 'lpc', 'evsecc', 'evcc', 'evcem', 'opev', 'oscev', 'evsoc', 'cevc', 'mpc', 'mgcp'].forEach(uc => {
             updateUsecaseDisplay(uc, false);
         });
     });
@@ -1968,6 +2014,20 @@
                 setText('mpcFrequency', d.mpcFrequency);
                 setText('mpcEnergyConsumed', d.mpcEnergyConsumed);
                 setText('mpcEnergyProduced', d.mpcEnergyProduced);
+            }
+            if (mgcpSupported) {
+                setText('mgcpPower', d.mgcPower);
+                setText('mgcpPowerLimitationFactor', d.mgcPowerLimitationFactor);
+                // Format per-phase arrays
+                const formatPhaseArray = (arr, unit) => {
+                    if (!arr || !Array.isArray(arr) || arr.length === 0) return '-';
+                    return arr.map((v, i) => `P${i + 1}: ${v}${unit}`).join(', ');
+                };
+                setText('mgcpCurrentPerPhase', formatPhaseArray(d.mgcCurrentPerPhase, 'A'));
+                setText('mgcpVoltagePerPhase', formatPhaseArray(d.mgcVoltagePerPhase, 'V'));
+                setText('mgcpFrequency', d.mgcFrequency);
+                setText('mgcpEnergyFeedIn', d.mgcEnergyFeedIn);
+                setText('mgcpEnergyConsumed', d.mgcEnergyConsumed);
             }
 
         } catch (e) {

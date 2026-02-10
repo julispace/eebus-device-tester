@@ -16,9 +16,26 @@
 | **OSCEV** | Optimization of Self-Consumption During EV Charging | CEM | Implemented | Implemented | Yes |
 | **EVSOC** | EV State Of Charge | CEM | Implemented | Implemented | No |
 | **MPC** | Monitoring of Power Consumption | MA | Implemented | Implemented | No |
+| **MGCP** | Monitoring of Grid Connection Point | MA | Implemented | Implemented | No |
 | **EVCS** | EV Charging Summary | CEM | Not available in eebus-go | Not implemented | No |
 
 ## Recently Completed Tasks
+
+### MGCP (Monitoring of Grid Connection Point) - Backend & Frontend Complete
+- Backend implementation:
+  - Added import for `github.com/enbility/eebus-go/usecases/ma/mgcp`
+  - Added `ucmamgrp ucapi.MaMGCPInterface` to hems struct
+  - Added data fields to usecaseData: `MgcPowerLimitationFactor`, `MgcPower`, `MgcEnergyFeedIn`, `MgcEnergyConsumed`, `MgcCurrentPerPhase`, `MgcVoltagePerPhase`, `MgcFrequency`
+  - Created `HandleMaMGCP` event handler for all MGCP events: UseCaseSupportUpdate, DataUpdatePowerLimitationFactor, DataUpdatePower, DataUpdateEnergyFeedIn, DataUpdateEnergyConsumed, DataUpdateCurrentPerPhase, DataUpdateVoltagePerPhase, DataUpdateFrequency
+  - Added MGCP initialization in `run()` function with config check
+  - Added MGCP to default config in `getDefaultConfig()`
+- Frontend implementation:
+  - Added MGCP HTML section with all data fields displayed
+  - Added `mgcpSupported` display flag
+  - Added `mgcp` to usecase initialization list
+  - Added MGCP data update logic in `fetchUsecaseData()`
+- Configuration:
+  - Added `mgcp` entry to config.json
 
 ### Frontend JavaScript Refactoring (Completed)
 - Replaced individual `update<Usecase>Display()` functions with a generic `updateUsecaseDisplay()` function
