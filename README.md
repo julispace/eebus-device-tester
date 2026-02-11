@@ -38,13 +38,15 @@ go build
 ## Run
 
 ```bash
-# required: server port
-./device-tester <serverport>
-# example
-./device-tester 4815
+# Build
+go build
 
-# optional but recommended: provide remote SKI to connect to another device. Key and cert will be created
-./device-tester 4815 <remoteski>
+# Optional: configure device identity in `config.json` (defaults used if missing)
+# Example (start with defaults):
+./device-tester
+
+# Example with explicit port and certificate files:
+./device-tester -p 4815 -c cert.pem -k key.pem
 ```
 
 ## Web UI
@@ -52,7 +54,20 @@ go build
 - Default UI: http://localhost:8080 
 ## Certificates
 
-If `cert.pem`/`key.pem` are not present next to the executable, the program creates self-signed files on first run.
+If `-c` and `-k` are provided they are used. Otherwise the program looks for `cert.pem`/`key.pem` next to the executable and uses them if present. If no certificate/key are available the program creates self-signed files on first run using the `deviceInfo.identifier` value from `config.json` as certificate CN, or a default identifier if not set.
+
+Device identity config (example `config.json` snippet):
+
+```json
+{
+  "deviceInfo": {
+    "vendor": "DemoVendor",
+    "brand": "DemoBrand",
+    "deviceName": "Device-Tester",
+    "identifier": "Demo-HEMS-123"
+  }
+}
+```
 
 
 ## Notes

@@ -1236,7 +1236,14 @@ function openPeerTab(ski) {
     hideDisabledUsecases(content);
     
     document.querySelector('.peer-tabs-container').appendChild(content);
-    
+
+    // Apply cached per-peer usecase support immediately if available
+    if (peersState.peerData[ski] && peersState.peerData[ski].usecaseSupport) {
+        Object.entries(peersState.peerData[ski].usecaseSupport).forEach(([name, supported]) => {
+            updatePeerUsecaseDisplay(ski, name, supported);
+        });
+    }
+
     initPeerTabHandlers(content, ski);
     
     peersState.peerTabs.add(ski);
@@ -1366,6 +1373,19 @@ function updatePeersList(peers) {
     
     peers.forEach(peer => {
         updatePeerTabStatus(peer.ski, peer.connected);
+    });
+
+    // store usecase support info into per-peer state so opening tabs can use it
+    peers.forEach(peer => {
+        if (!peersState.peerData[peer.ski]) peersState.peerData[peer.ski] = createPeerData(peer.ski);
+        peersState.peerData[peer.ski].usecaseSupport = peer.usecases || {};
+        // if tab content already exists, update display immediately
+        const content = document.querySelector(`.peer-tab-content[data-ski="${peer.ski}"]`);
+        if (content && peer.usecases) {
+            Object.entries(peer.usecases).forEach(([name, supported]) => {
+                updatePeerUsecaseDisplay(peer.ski, name, supported);
+            });
+        }
     });
 }
 

@@ -6,6 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"flag"
 	"fmt"
 	"log"
 	"math"
@@ -45,8 +46,9 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	Usecases map[string]UsecaseConfig `json:"usecases"`
-	Logging  LoggingConfig            `json:"logging"`
+	Usecases   map[string]UsecaseConfig `json:"usecases"`
+	Logging    LoggingConfig            `json:"logging"`
+	DeviceInfo DeviceInfo               `json:"deviceInfo"`
 }
 
 // UsecaseConfig represents configuration for a single usecase
@@ -59,6 +61,14 @@ type UsecaseConfig struct {
 type LoggingConfig struct {
 	EnableDebug bool `json:"enableDebug"`
 	EnableTrace bool `json:"enableTrace"`
+}
+
+// DeviceInfo holds metadata used to identify this service/device
+type DeviceInfo struct {
+	Vendor     string `json:"vendor,omitempty"`
+	Brand      string `json:"brand,omitempty"`
+	DeviceName string `json:"deviceName,omitempty"`
+	Identifier string `json:"identifier,omitempty"`
 }
 
 // loadConfig loads the config.json file or returns default config if file doesn't exist
@@ -102,6 +112,12 @@ func getDefaultConfig() *Config {
 		Logging: LoggingConfig{
 			EnableDebug: true,
 			EnableTrace: true,
+		},
+		DeviceInfo: DeviceInfo{
+			Vendor:     "DemoVendor",
+			Brand:      "DemoBrand",
+			DeviceName: "Device-Tester",
+			Identifier: "Demo-HEMS-123",
 		},
 	}
 }
@@ -356,7 +372,7 @@ var ucMu sync.Mutex
 // usecaseDataMutex for thread-safe access to peer usecase data
 var usecaseDataMutex sync.Mutex
 
-func (h *hems) run() {
+func (h *hems) run(port int, certPathFlag, keyPathFlag string) {
 	var err error
 	var certificate tls.Certificate
 
@@ -368,13 +384,19 @@ func (h *hems) run() {
 	defaultCertPath := filepath.Join(exeDir, "cert.pem")
 	defaultKeyPath := filepath.Join(exeDir, "key.pem")
 
-	if len(os.Args) == 4 {
-		certificate, err = tls.LoadX509KeyPair(os.Args[2], os.Args[3])
+	// If user provided cert/key via flags, prefer them
+	userCertPath := strings.TrimSpace(certPathFlag)
+	userKeyPath := strings.TrimSpace(keyPathFlag)
+
+	// Try user-specified cert/key first
+	if userCertPath != "" && userKeyPath != "" {
+		certificate, err = tls.LoadX509KeyPair(userCertPath, userKeyPath)
 		if err != nil {
 			usage()
-			log.Fatal(err)
+			log.Fatalf("loading cert/key from %s,%s: %v", userCertPath, userKeyPath, err)
 		}
 	} else {
+		// fallback to default files next to executable
 		if _, errCert := os.Stat(defaultCertPath); errCert == nil {
 			if _, errKey := os.Stat(defaultKeyPath); errKey == nil {
 				certificate, err = tls.LoadX509KeyPair(defaultCertPath, defaultKeyPath)
@@ -383,8 +405,28 @@ func (h *hems) run() {
 				}
 			}
 		}
+		// if still empty, generate a new cert and write to default paths
 		if len(certificate.Certificate) == 0 && certificate.PrivateKey == nil {
-			certificate, err = cert.CreateCertificate("Demo", "Demo", "DE", "Demo-Unit-01")
+			// determine identifier from config DeviceInfo if available
+			identifier := ""
+			if h.config != nil {
+				identifier = h.config.DeviceInfo.Identifier
+			}
+			cn := identifier
+			if cn == "" {
+				cn = "Demo-Unit-01"
+			}
+			vendor := "Demo"
+			brand := "Demo"
+			if h.config != nil {
+				if h.config.DeviceInfo.Vendor != "" {
+					vendor = h.config.DeviceInfo.Vendor
+				}
+				if h.config.DeviceInfo.Brand != "" {
+					brand = h.config.DeviceInfo.Brand
+				}
+			}
+			certificate, err = cert.CreateCertificate(vendor, brand, "DE", cn)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -398,14 +440,28 @@ func (h *hems) run() {
 		}
 	}
 
-	port, err := strconv.Atoi(os.Args[1])
-	if err != nil {
-		usage()
-		log.Fatal(err)
+	// Prepare device info for service configuration
+	vendor := "DemoVendor"
+	brand := "DemoBrand"
+	deviceName := "Device-Tester"
+	configIdentifier := ""
+	if h.config != nil {
+		if h.config.DeviceInfo.Vendor != "" {
+			vendor = h.config.DeviceInfo.Vendor
+		}
+		if h.config.DeviceInfo.Brand != "" {
+			brand = h.config.DeviceInfo.Brand
+		}
+		if h.config.DeviceInfo.DeviceName != "" {
+			deviceName = h.config.DeviceInfo.DeviceName
+		}
+		if h.config.DeviceInfo.Identifier != "" {
+			configIdentifier = h.config.DeviceInfo.Identifier
+		}
 	}
 
 	configuration, err := api.NewConfiguration(
-		"DemoVendor", "DemoBrand", "Device-Tester", "123456789",
+		vendor, brand, deviceName, configIdentifier,
 		[]shipapi.DeviceCategoryType{shipapi.DeviceCategoryTypeEMobility},
 		model.DeviceTypeTypeEnergyManagementSystem,
 		[]model.EntityTypeType{model.EntityTypeTypeCEM},
@@ -413,7 +469,9 @@ func (h *hems) run() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	configuration.SetAlternateIdentifier("Demo-HEMS-123456789")
+	if configIdentifier != "" {
+		configuration.SetAlternateIdentifier(configIdentifier)
+	}
 
 	h.myService = service.NewService(configuration, h)
 	h.myService.SetLogging(h)
@@ -1366,23 +1424,45 @@ func (h *hems) HandleEVSEDeviceState(ski string, failure bool, errorCode string)
 // main app
 func usage() {
 	fmt.Println("Usage:")
-	fmt.Println("  ./device-tester <serverport> [<crtfile> <keyfile>]")
+	fmt.Println("  ./device-tester [-p <serverport>] [-c <cert.pem>] [-k <key.pem>] [-h]")
+	fmt.Println()
+	fmt.Println("Flags:")
+	fmt.Println("  -p   Server port for EEBUS (default: 4815)")
+	fmt.Println("  -c   Path to certificate PEM file (optional)")
+	fmt.Println("  -k   Path to private key PEM file (optional)")
+	fmt.Println("  -h   Show this help and exit")
 	fmt.Println()
 	fmt.Println("The tool will automatically discover EEBUS devices on the network.")
 	fmt.Println("Use the web interface at http://localhost:8080 to view and connect to peers.")
 	fmt.Println()
-	fmt.Println("If cert.pem and key.pem are available in the exe directory, they will be used automatically.")
-	fmt.Println("Otherwise, a new self-signed certificate will be created and stored there.")
+	fmt.Println("Device identity (vendor/brand/name/identifier) is read from config.json under the 'deviceInfo' section.")
+	fmt.Println("If no config.json exists default device info values will be used.")
+	fmt.Println()
+	fmt.Println("If -c and -k are provided they are used. Otherwise, cert.pem and key.pem next to the executable will be used if present.")
+	fmt.Println("If no certificate/key are available, a self-signed certificate will be created using the device identifier from config as CN (or a default identifier).")
 }
 
 func main() {
-	if len(os.Args) < 2 {
+	portFlag := flag.Int("p", 4815, "server port for EEBUS (default 4815)")
+	certFlag := flag.String("c", "", "path to cert.pem (optional)")
+	keyFlag := flag.String("k", "", "path to key.pem (optional)")
+	helpFlag := flag.Bool("h", false, "show help")
+	flag.Parse()
+	h := hems{}
+	if *helpFlag {
 		usage()
 		return
 	}
 
-	h := hems{}
-	h.run()
+	// load config early so defaults are available inside run()
+	var err error
+	h.config, err = loadConfig()
+	if err != nil {
+		fmt.Printf("Error loading config: %v\n", err)
+		os.Exit(1)
+	}
+
+	h.run(*portFlag, *certFlag, *keyFlag)
 
 	// Clean exit to make sure mdns shutdown is invoked
 	sig := make(chan os.Signal, 1)
@@ -1812,15 +1892,18 @@ func (h *hems) startWebInterface() {
 			}
 		}
 
-		// also send current global usecase state snapshot
-		ucMu.Lock()
-		for name, supported := range h.globalUseCaseState {
-			msg := map[string]interface{}{"type": "usecase", "name": name, "supported": supported}
-			if b, err := json.Marshal(msg); err == nil {
-				_ = c.WriteMessage(websocket.TextMessage, b)
+		// send per-peer usecase state snapshot so new websocket clients
+		// receive usecase support messages that include the peer SKI.
+		h.peersMu.Lock()
+		for ski, peer := range h.peers {
+			for name, supported := range peer.usecaseState {
+				msg := map[string]interface{}{"type": "usecase", "name": name, "supported": supported, "ski": ski}
+				if b, err := json.Marshal(msg); err == nil {
+					_ = c.WriteMessage(websocket.TextMessage, b)
+				}
 			}
 		}
-		ucMu.Unlock()
+		h.peersMu.Unlock()
 
 		// send current peer list
 		h.broadcastPeerList()
@@ -2001,7 +2084,20 @@ func (h *hems) startWebInterface() {
 			h.peersMu.Lock()
 			for _, peer := range h.peers {
 				if peer.connected {
-					if err := json.NewEncoder(w).Encode(peer.usecaseData); err != nil {
+					// To remain backward compatible we return the usecaseData fields at the
+					// top level (as before) and add an additional `usecaseSupport` map
+					// containing per-peer supported usecases.
+					// Build a generic map from peer.usecaseData, then inject usecaseSupport.
+					var base map[string]interface{}
+					if b, err := json.Marshal(peer.usecaseData); err == nil {
+						if err := json.Unmarshal(b, &base); err != nil {
+							base = make(map[string]interface{})
+						}
+					} else {
+						base = make(map[string]interface{})
+					}
+					base["usecaseSupport"] = peer.usecaseState
+					if err := json.NewEncoder(w).Encode(base); err != nil {
 						h.Errorf("encode usecasedata: %v", err)
 					}
 					h.peersMu.Unlock()

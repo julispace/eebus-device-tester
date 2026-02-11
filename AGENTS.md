@@ -309,17 +309,14 @@ The `logging` section controls stdout logging output:
 # Build
 go build
 
-# Run (first time, generates certificates)
-./device-tester <port>
-
-# Run with remote SKI
-./device-tester <port> <remoteSKI>
+# Run (required): provide an identifier (-i). Port is optional (default 4815)
+./device-tester -i "Demo-HEMS-123" [-p 4815] [-c cert.pem -k key.pem]
 
 # Web UI
 http://localhost:8080
 ```
 
-After making changes to the go-code, run  "go build -a"
+After making changes to the go-code, run `go build -a`
 
 ## Dependencies
 

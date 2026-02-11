@@ -1,4 +1,10 @@
 {
+  "deviceInfo": {
+    "vendor": "DemoVendor",
+    "brand": "DemoBrand",
+    "deviceName": "Device-Tester",
+    "identifier": "Demo-HEMS-123"
+  },
   "usecases": {
     "lpc": {
       "enabled": true,
@@ -42,7 +48,7 @@
     },
     "mgcp": {
       "enabled": true,
-      "description": "Monitoring of Grid Connection Point (MA)"
+      "description": "Monitoring of Grid Connection point (MA)"
     }
   },
   "logging": {
