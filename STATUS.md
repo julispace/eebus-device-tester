@@ -21,6 +21,78 @@
 
 ## Recently Completed Tasks
 
+### SPINE Message Routing Fix
+- **Issue**: SPINE trace messages were not being routed to the correct peer tabs
+- **Root Cause**: The log format includes the SKI after the log level, but the frontend regex patterns didn't account for this
+- **Log Format**: `2026-02-10 12:47:44 TRACE <SKI> Recv: <SKI> {"data":...}`
+- **Frontend Fixes**:
+  - Fixed `extractSKIFromMessage()` to match exactly 40 hex characters (SKI length)
+  - Fixed trace message detection regex to expect SKI between TRACE and Recv/Send
+  - Fixed `extractDirection()` to handle the same format
+  - Now properly routes both `Recv` and `Send` message types
+
+### Connect to Discovered Peers + Device Info Display
+- **Backend Changes**:
+  - Extended `peerData` struct with device info fields:
+    - `deviceName`, `brand`, `model`, `deviceType`, `serial`, `identifier`
+  - Extended `PeerInfo` struct with same fields for API responses
+  - Updated `VisibleRemoteServicesUpdated()` to capture device info from mDNS discovery
+  - Updated `broadcastPeerList()` to include device info in WebSocket messages
+  - New API endpoint: `POST /api/connect` - accepts `{ski: "..."}` to register/connect to a peer
+  - Updated `/api/peers` endpoint to return device information
+- **Frontend Changes**:
+  - New `connectToPeer(ski)` function to call the connect API
+  - Peers List table now shows:
+    - Full SKI (no longer truncated)
+    - Device brand and model (e.g., "Tinkerforge WARP Energy Manager 2.0")
+    - Additional details: device type, serial number, identifier
+    - "Connect" button for disconnected peers (green button)
+    - "Open" button for connected peers
+  - Peer tab labels show device name if available, otherwise shortened SKI
+  - Full SKI displayed in peer tab content area
+
+### Multi-Peer Support (Major Refactoring) - Backend Complete
+- **Architecture Changes**:
+  - Removed `remoteSki` global variable - no longer needed for multi-peer support
+  - Created new `peerData` struct containing:
+    - `usecaseData` (per-peer data)
+    - `entities []spineapi.EntityRemoteInterface`
+    - `lastEntitiesJSON []byte`
+    - `usecaseState map[string]bool`
+    - `connected bool`
+  - Updated `hems` struct:
+    - Added `peers map[string]*peerData` (keyed by SKI)
+    - Added `peersMu sync.Mutex`
+    - Added `globalUseCaseState map[string]bool` for global usecase enablement tracking
+    - Removed single `usecaseData`, `entities`, `lastEntitiesJSON`, `usecaseState` fields
+  - Implemented peer management methods:
+    - `getOrCreatePeer(ski string) *peerData` - gets existing or creates new peer
+    - `getPeer(ski string) *peerData` - gets existing peer or nil
+    - `removePeer(ski string)` - removes peer from map
+    - `getAllPeers() map[string]*peerData` - returns copy of all peers
+- **Event Handler Updates**:
+  - All usecase handlers (HandleEgLPP, HandleEgLPC, HandleEgEvcc, HandleEgEvcem, HandleEgEvsecc, HandleEgCevc, HandleMaMpc, HandleMaMGCP, HandleCemOpev, HandleCemOscev, HandleCemEvsoc) updated to:
+    - Get peer data using SKI parameter
+    - Store data in peer's usecaseData instead of h.usecaseData
+- **EEBUS Service Handler Updates**:
+  - `ServicePairingDetailUpdate` - handles all peers, not just remoteSki
+  - `AllowWaitingForTrust` - returns true for all SKIs initially
+  - `VisibleRemoteServicesUpdated` - tracks discovered services, broadcasts peer list
+  - `RemoteSKIConnected` - updates peer connection state to connected
+  - `RemoteSKIDisconnected` - updates peer connection state to disconnected
+- **Logging Improvements**:
+  - Added `extractSKIFromMessage()` to parse SKI from trace entries
+  - Log messages now include SKI for frontend routing
+  - Each log line format: `<timestamp> <level> <ski> <message>`
+- **New API Endpoints**:
+  - `GET /api/peers` - list all discovered peers with connection state and usecase support
+  - `GET /api/usecasedata?ski=<ski>` - get usecase data for specific peer (SKI parameter now required)
+  - `GET /api/entities?ski=<ski>` - get entities for specific peer (SKI parameter now required)
+- **WebSocket Messages**:
+  - New message type `"peers"` broadcasts peer list updates
+  - Entity updates include SKI for proper routing
+  - Usecase support updates include SKI
+
 ### MGCP (Monitoring of Grid Connection Point) - Backend & Frontend Complete
 - Backend implementation:
   - Added import for `github.com/enbility/eebus-go/usecases/ma/mgcp`
@@ -102,7 +174,17 @@
 
 ### High Priority
 
-#### 1. CEVC Write Functions (Pending)
+#### 1. Multi-Peer Frontend Support (Completed)
+- Updated frontend with tabbed interface for multiple peers
+- Peers List tab showing discovered peers with status, SKI, device info
+- Individual peer tabs for each connected device
+- WebSocket handling routes messages by SKI to appropriate peer
+- Per-peer data storage: usecase data, entities, traces, logs
+- Write operations include SKI parameter for correct routing
+- Auto-refresh of peer data for active tab
+- Tabs are closable with status indicators
+
+#### 2. CEVC Write Functions (Pending)
 - Add write functions for power limits and incentive tables
 - Add frontend controls for sending power limits
 

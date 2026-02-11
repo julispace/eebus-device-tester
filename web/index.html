@@ -51,12 +51,6 @@
             border-bottom: 1px solid rgba(0, 0, 0, 0.2);
         }
 
-        .top {
-            display: flex;
-            gap: 12px;
-            align-items: stretch;
-        }
-
         .card {
             background: var(--card);
             border-radius: 8px;
@@ -64,40 +58,6 @@
             padding: 12px;
         }
 
-        /* draggable splitter between left and right columns */
-        .splitter {
-            width: 8px;
-            cursor: col-resize;
-            background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.06), transparent);
-            border-radius: 4px;
-            align-self: stretch;
-        }
-
-        .splitter:hover {
-            background: linear-gradient(90deg, transparent, rgba(0, 0, 0, 0.12), transparent);
-        }
-
-        .panel {
-            display: flex;
-            flex-direction: column;
-            gap: 8px
-        }
-
-        /* left column (small) */
-        #leftColumn { /* much smaller to give parsed traces priority */
-            width: 300px;
-            min-width: 440px;
-            max-width: 620px;
-            flex-shrink: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            box-sizing: border-box;
-            align-self: stretch;
-            min-height: 0;
-        }
-
-        /* control panel: labels above inputs */
         .field-row {
             display: flex;
             flex-direction: column;
@@ -114,7 +74,6 @@
             font-weight: 600;
         }
 
-        /* Usecase section header with support status */
         .usecase-header {
             display: flex;
             align-items: center;
@@ -144,7 +103,6 @@
             color: #6b7280;
         }
 
-        /* Usecase content - greyed out when unsupported */
         .usecase-content {
             display: flex;
             flex-direction: column;
@@ -175,23 +133,6 @@
             font-size: 13px;
         }
 
-        /* New styles for manufacturer details */
-        .manufacturer-wrapper {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .manufacturer-details {
-            overflow: auto;
-            /* details are shown by JS as flex when opened to allow internal layout; max-height is set by JS */
-            display: none; /* default hidden; JS switches to 'flex' when opened */
-            flex-direction: column;
-            gap: 6px;
-            /* ensure details never exceed the left panel height (which equals .top height) */
-            /*max-height: var(--panel-height);*/
-        }
-
         input[type="text"], input[type="number"], select {
             padding: 6px 8px;
             border: 1px solid #e5e7eb;
@@ -214,56 +155,245 @@
             color: #111
         }
 
-        /* usecases */
-        #usecaseList {
+        /* ========== PEER TABS ========== */
+        .peer-tabs-container {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            flex: 1;
+            min-height: 0;
+            gap: 8px;
         }
 
-        .usecase {
+        .peer-tabs-bar {
+            display: flex;
+            gap: 2px;
+            border-bottom: 1px solid #ccc;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 4px 4px 0 4px;
+            background: #f1f1f1;
+            border-radius: 8px 8px 0 0;
+            flex-shrink: 0;
+        }
+
+        .peer-tab {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: #e5e7eb;
+            border: none;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+            white-space: nowrap;
+            transition: background-color 0.2s;
+        }
+
+        .peer-tab:hover {
+            background: #d1d5db;
+        }
+
+        .peer-tab.active {
+            background: #ffffff;
+            color: #111;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        .peer-tab .close-btn {
+            background: transparent;
+            border: none;
+            color: #6b7280;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 3px;
+        }
+
+        .peer-tab .close-btn:hover {
+            background: rgba(0, 0, 0, 0.1);
+            color: #111;
+        }
+
+        .peer-tab .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .peer-tab .status-dot.connected {
+            background: var(--success);
+        }
+
+        .peer-tab .status-dot.disconnected {
+            background: var(--danger);
+        }
+
+        .peer-tab-content {
+            display: none;
+            flex: 1;
+            overflow: auto;
+            min-height: 0;
+        }
+
+        .peer-tab-content.active {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* Peers List Table */
+        .peers-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .peers-table th,
+        .peers-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .peers-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        .peers-table tr:hover {
+            background: #f9fafb;
+        }
+
+        .peers-table .status-connected {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .peers-table .status-disconnected {
+            color: var(--danger);
+        }
+
+        .peers-table .ski-cell {
+            font-family: monospace;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .peers-table button {
+            padding: 4px 10px;
+            font-size: 12px;
+        }
+
+        .peers-list-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px;
-            background: #fbfdff;
-            border-radius: 6px;
-            border: 1px solid #f1f5f9
+            margin-bottom: 12px;
         }
 
-        .usecase .state.supported {
-            color: var(--success);
-            font-weight: 600
+        .peers-list-header h3 {
+            margin: 0;
         }
 
-        .usecase .state.unsupported {
-            color: var(--muted)
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--muted);
         }
 
-        /* right column */
-        /* SPINE Messages & Trace Log tabs */
-        #parsedPanel {
-            padding: 12px;
+        /* Peer content layout */
+        .peer-content-layout {
+            display: flex;
+            gap: 12px;
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+        }
+
+        .peer-content-left {
+            width: 440px;
+            min-width: 440px;
+            max-width: 620px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .peer-content-right {
             flex: 1;
             min-width: 200px;
             display: flex;
             flex-direction: column;
-            align-self: stretch;
+            gap: 12px;
+        }
+
+        /* Sub tabs */
+        .sub-tabs {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+            display: flex;
+        }
+
+        .sub-tabs button {
+            background-color: inherit;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 10px 16px;
+            transition: 0.3s;
+            color: black;
+            font-size: 13px;
+        }
+
+        .sub-tabs button:hover {
+            background-color: #ddd;
+        }
+
+        .sub-tabs button.active {
+            background-color: #ccc;
+        }
+
+        .subtab-content {
+            display: none;
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-top: none;
+            flex: 1;
+            overflow: auto;
             min-height: 0;
         }
 
-        #parsedTracesList {
+        .subtab-content.active {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* Trace list styles */
+        .parsed-traces-list {
             list-style: none;
             padding: 0;
             margin: 0;
             display: flex;
             flex-direction: column;
             gap: 4px;
-            max-height: 1000px;
             overflow: auto;
         }
 
-        #parsedTracesList li {
+        .parsed-traces-list li {
             padding: 6px 8px;
             margin: 4px 0;
             border-radius: 6px;
@@ -277,81 +407,55 @@
             line-height: 18px;
         }
 
-        #parsedTracesList li.selected {
+        .parsed-traces-list li.selected {
             background: #e8f0ff;
             box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.12) inset;
         }
 
-        .trace-meta {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            font-size: 13px;
-            color: #111
-        }
-
         .trace-ts {
             color: var(--muted);
-            width: 150px
+            width: 150px;
         }
 
         .dir-recv {
             color: var(--accent);
-            font-weight: 700
+            font-weight: 700;
         }
 
         .dir-send {
             color: purple;
-            font-weight: 700
+            font-weight: 700;
         }
 
-        /* entities tree */
-        #entitiesPanel {
-            margin-bottom: 10px;
-        }
-
-        #entitiesList {
+        /* Entities tree */
+        .entities-list {
             list-style: none;
             padding: 0;
             margin: 0;
             border: 1px solid #eef2ff;
             border-radius: 6px;
-            /* show all entries, no internal scroll */
         }
 
-        #entitiesList li {
+        .entities-list li {
             padding: 8px;
             border-bottom: 1px solid #f1f5f9;
-            cursor: pointer
-        }
-
-        #entitiesList li .sub {
-            margin-left: 12px;
-            font-size: 13px;
-            color: #333
         }
 
         .tree-toggle {
             display: inline-block;
             width: 18px;
             text-align: center;
-            color: var(--muted)
+            color: var(--muted);
+            cursor: pointer;
         }
 
         .entity-addr {
-            font-weight: 600
+            font-weight: 600;
+            cursor: pointer;
         }
 
-        /* detail panel */
-        #traceDetailPanel {
-            position: relative;
-            margin-top: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        #traceDetail {
+        /* Trace detail */
+        .trace-detail {
             display: none;
             white-space: pre-wrap;
             background: #0b1220;
@@ -362,111 +466,31 @@
             flex: 1;
             max-height: 50%;
             min-height: 0;
+            font-family: monospace;
+            font-size: 12px;
         }
 
-        #traceDetail.header {
-            display: flex;
-        }
-
-        #traceDetailClose {
-            position: absolute;
-            right: 8px;
-            top: 8px;
-            background: transparent;
-            border: 0;
-            color: #fff;
-            cursor: pointer
-        }
-
-        /* logs bottom */
-        footer .card {
-            padding: 8px
-        }
-
-        #logs {
+        /* Logs */
+        .peer-logs {
             white-space: pre-wrap;
-            background: var(--code-bg);
-            color: var(--code-color);
+            background: #0b1220;
+            color: #dbeafe;
             padding: 10px;
-            height: 180px;
+            height: 240px;
             overflow: auto;
-            border-radius: 6px
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
         }
 
-        /* responsive */
         @media (max-width: 900px) {
-            .top {
-                grid-template-columns: 1fr;
+            .peer-content-layout {
+                flex-direction: column;
             }
-
-            #parsedTracesList {
-                max-height: 200px
+            .peer-content-left {
+                width: 100%;
+                min-width: auto;
             }
-        }
-
-        /* Style the tab */
-        .tab {
-            overflow: hidden;
-            border: 1px solid #ccc;
-            background-color: #f1f1f1;
-        }
-
-        /* Style the buttons that are used to open the tab content */
-        .tab button {
-            background-color: inherit;
-            float: left;
-            border: none;
-            outline: none;
-            cursor: pointer;
-            padding: 14px 16px;
-            transition: 0.3s;
-            color: black;
-        }
-
-        /* Change background color of buttons on hover */
-        .tab button:hover {
-            background-color: #ddd;
-        }
-
-        /* Create an active/current tablink class */
-        .tab button.active {
-            background-color: #ccc;
-        }
-
-        /* Style the tab content */
-        .tabcontent {
-            display: none;
-            padding: 6px 12px;
-            border: 1px solid #ccc;
-            border-top: none;
-            flex: 1;
-            overflow: auto;
-            min-height: 0;
-        }
-
-        #tabContent {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            flex: 1;
-            min-height: 0;
-        }
-
-        @keyframes flash-bg {
-            0% {
-                background-color: rgba(37, 99, 235, 0.24);
-            }
-            60% {
-                background-color: rgba(37, 99, 235, 0.12);
-            }
-            100% {
-                background-color: transparent;
-            }
-        }
-
-        .flash-change {
-            animation: flash-bg 3s ease-out;
-            border-radius: 6px; /* optional, passt zu list items */
         }
     </style>
 </head>
@@ -474,1566 +498,1722 @@
 <div class="app">
     <header>
         <h1>EEBUS Device Tester</h1>
-        <div style="color:var(--muted);font-size:13px">Local web UI</div>
+        <div style="color:var(--muted);font-size:13px">Multi-Peer Support</div>
     </header>
 
-    <div class="top">
-        <div class="card panel" id="leftColumn">
-
-            <section id="dataControlPanel" class="card" style="padding:12px">
-                <h3 style="margin:0 0 6px 0">Data and Control</h3>
-
-                <div style="display:flex;flex-direction:column;gap:8px">
-                    <!-- LPC-->
-                    <div class="usecase-header">
-                        <div class="usecase-label">LPC</div>
-                        <span id="lpcBadge" class="support-badge unsupported">not supported</span>
-                    </div>
-                    <div id="lpcContent" class="usecase-content disabled">
-                        <h5>Scenario 1 - Control active power consumption</h5>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">Limit (W)</div>
-                                <div id="lpcLimitValue" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Duration (s)</div>
-                                <div id="lpcLimitDur" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Active</div>
-                                <div id="lpcLimitActive" class="data-value">-</div>
-                            </div>
-                        </div>
-                        <div style="display:flex; gap:8px; align-items:center;">
-                            <input id="writeLimitValue" type="number" placeholder="value (W)" style="width:90px"
-                                   value="3600"/>
-                            <input id="writeLimitDurationSec" type="number" placeholder="duration (s)"
-                                   style="width:90px" value="600"/>
-                            <label style="display:flex;align-items:center;gap:6px;margin:0"><input id="writeLimitActive"
-                                                                                                   type="checkbox"
-                                                                                                   checked/>
-                                Active</label>
-                            <button id="sendWriteLimit">Send Loadcontrol Limit</button>
-                        </div>
-                        <h5>Scenario 2 - Failsafe</h5>
-                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-                            <div class="data-container">
-                                <div class="data-label">Failsafe Power (W)</div>
-                                <div id="lpcFailsafePower" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Failsafe Duration (min)</div>
-                                <div id="lpcFailsafeDuration" class="data-value">-</div>
-                            </div>
-                        </div>
-                        <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
-                            <input id="writeFailsafePower" type="number" placeholder="failsafe power (W)"
-                                   style="width:120px" value="2500"/>
-                            <input id="writeFailsafeDurationMin" type="number" placeholder="duration (min)"
-                                   style="width:120px" value="300"/>
-                            <button id="sendWriteFailsafePower">Send Failsafe Power</button>
-                            <button id="sendWriteFailsafeDuration">Send Failsafe Duration</button>
-                        </div>
-                        <h5>Scenario 3 - Heartbeat</h5>
-                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-                            <div class="data-container">
-                                <div class="data-label">Heartbeat Received</div>
-                                <div id="lpcHeartbeat" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Last Heartbeat Time</div>
-                                <div id="lpcHeartbeatTimestamp" class="data-value">-</div>
-                            </div>
-                        </div>
-                        <h5>Scenario 4 - Constraints</h5>
-                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-                            <div class="data-container">
-                                <div class="data-label">Maximum possible Power Consumption (W)</div>
-                                <div id="lpcMaxNominalPower" class="data-value">-</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="height:1px;background:grey;margin:6px 0"></div>
-                    <!-- LPP-->
-                    <div class="usecase-header">
-                        <div class="usecase-label">LPP</div>
-                        <span id="lppBadge" class="support-badge unsupported">not supported</span>
-                    </div>
-                    <div id="lppContent" class="usecase-content disabled">
-                        <h5>Scenario 1 - Control active power production</h5>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">Limit (W)</div>
-                                <div id="lppLimitValue" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Duration (s)</div>
-                                <div id="lppLimitDur" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Active</div>
-                                <div id="lppLimitActive" class="data-value">-</div>
-                            </div>
-                        </div>
-                        <div style="display:flex; gap:8px; align-items:center;">
-                            <input id="writeLPPLimitValue" type="number" placeholder="value (W)" style="width:90px"
-                                   value="3600"/>
-                            <input id="writeLPPLimitDurationSec" type="number" placeholder="duration (s)"
-                                   style="width:90px" value="600"/>
-                            <label style="display:flex;align-items:center;gap:6px;margin:0"><input id="writeLPPLimitActive"
-                                                                                                   type="checkbox"
-                                                                                                   checked/>
-                                Active</label>
-                            <button id="sendWriteLPPLimit">Send Production Limit</button>
-                        </div>
-                        <h5>Scenario 2 - Failsafe</h5>
-                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-                            <div class="data-container">
-                                <div class="data-label">Failsafe Power (W)</div>
-                                <div id="lppFailsafeValue" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Failsafe Duration (min)</div>
-                                <div id="lppFailsafeDur" class="data-value">-</div>
-                            </div>
-                        </div>
-                        <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
-                            <input id="writeLPPFailsafePower" type="number" placeholder="failsafe power (W)"
-                                   style="width:120px" value="2500"/>
-                            <input id="writeLPPFailsafeDurationMin" type="number" placeholder="duration (min)"
-                                   style="width:120px" value="300"/>
-                            <button id="sendWriteLPPFailsafePower">Send Failsafe Power</button>
-                            <button id="sendWriteLPPFailsafeDuration">Send Failsafe Duration</button>
-                        </div>
-                        <h5>Scenario 3 - Heartbeat</h5>
-                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-                            <div class="data-container">
-                                <div class="data-label">Heartbeat Received</div>
-                                <div id="lppHeartbeat" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Last Heartbeat Time</div>
-                                <div id="lppHeartbeatTimestamp" class="data-value">-</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="height:1px;background:grey;margin:6px 0"></div>
-
-                    <!-- EVSECC-->
-                    <div class="usecase-header">
-                        <div class="usecase-label">EVSECC</div>
-                        <span id="evseccBadge" class="support-badge unsupported">not supported</span>
-                    </div>
-                    <div id="evseccContent" class="usecase-content disabled">
-                        <h5>Scenario 1 - EVSE sends manufacturer info</h5>
-                        <div class="data-container">
-                            <div class="data-label">Manufacturer Data</div>
-                            <div id="evseccManufacturer" class="data-value">-</div>
-                        </div>
-                        <h5>Scenario 2 - EVSE sends error state</h5>
-                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-                            <div class="data-container">
-                                <div class="data-label">Operating State</div>
-                                <div id="evseccOperatingState" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Error Message</div>
-                                <div id="evseccErrorMessage" class="data-value">-</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="height:1px;background:grey;margin:6px 0"></div>
-
-                    <!-- EVCC-->
-                    <div class="usecase-header">
-                        <div class="usecase-label">EVCC</div>
-                        <span id="evccBadge" class="support-badge unsupported">not supported</span>
-                    </div>
-                    <div id="evccContent" class="usecase-content disabled">
-                        <h5>Scenario 1 - EV Connected & Scenario 8 - EV disconnected</h5>
-                        <div class="data-container">
-                            <div class="data-label">Operating State</div>
-                            <div id="evccEvConnected" class="data-value">-</div>
-                        </div>
-                        <h5>Scenario 2 - EV sends communication standard</h5>
-                        <div class="data-container">
-                            <div class="data-label">Communication Standard</div>
-                            <div id="evccCommStandard" class="data-value">-</div>
-                        </div>
-                        <h5>Scenario 3 - EV sends support of asymmetric charging</h5>
-                        <div class="data-container">
-                            <div class="data-label">Asymmetric Charging supported</div>
-                            <div id="evccAsymmetricCharging" class="data-value">-</div>
-                        </div>
-                        <h5>Scenario 4 - EV sends identification</h5>
-                        <div class="data-container">
-                            <div class="data-label">MAC type</div>
-                            <div id="evccIdentificationType" class="data-value">-</div>
-                        </div>
-                        <div class="data-container">
-                            <div class="data-label">MAC Address</div>
-                            <div id="evccIdentificationValue" class="data-value">-</div>
-                        </div>
-                        <h5>Scenario 5 - EV sends manufacturer</h5>
-                        <div class="data-container">
-                            <div class="data-label">Manufacturer Data</div>
-                            <div id="evccManufacturer" class="data-value">-</div>
-                        </div>
-                        <h5>Scenario 6 - EV sends charging power limits</h5>
-                        <div class="data-container">
-                            <div class="data-label">Minimum Charging Power (W)</div>
-                            <div id="evccChargingLimitsMin" class="data-value">-</div>
-                        </div>
-                        <div class="data-container">
-                            <div class="data-label">Maximum Charging Power (W)</div>
-                            <div id="evccChargingLimitsMax" class="data-value">-</div>
-                        </div>
-                        <div class="data-container">
-                            <div class="data-label">Standby Charging Power (W)</div>
-                            <div id="evccChargingLimitsStandy" class="data-value">-</div>
-                        </div>
-                        <h5>Scenario 7 - EV sleep mode</h5>
-                        <div class="data-container">
-                            <div class="data-label">EV Sleep Mode active</div>
-                            <div id="evccSleepMode" class="data-value">-</div>
-                        </div>
-                    </div>
-                    <div style="height:1px;background:grey;margin:6px 0"></div>
-
-                    <!-- EVCEM-->
-                    <div class="usecase-header">
-                        <div class="usecase-label">EVCEM</div>
-                        <span id="evcemBadge" class="support-badge unsupported">not supported</span>
-                    </div>
-                    <div id="evcemContent" class="usecase-content disabled">
-                        <h5>Scenario 1 - Measure EV Charging current</h5>
-                        <div class="data-container">
-                            <div class="data-label">Charging Current per Phase (A)</div>
-                            <div id="evcemChargingCurrent" class="data-value">-</div>
-                        </div>
-                        <h5>Scenario 2 - Measure EV charging Power</h5>
-                        <div class="data-container">
-                            <div class="data-label">Charging Power per Phase (W)</div>
-                            <div id="evcemChargingPower" class="data-value">-</div>
-                        </div>
-                        <h5>Scenario 3 - Measure EV charging energy</h5>
-                        <div class="data-container">
-                            <div class="data-label">Energy Charged (Wh)</div>
-                            <div id="evcemChargedEnergy" class="data-value">-</div>
-                        </div>
-                    </div>
-                    <div style="height:1px;background:grey;margin:6px 0"></div>
-
-                    <!-- OPEV-->
-                    <div class="usecase-header">
-                        <div class="usecase-label">OPEV</div>
-                        <span id="opevBadge" class="support-badge unsupported">not supported</span>
-                    </div>
-                    <div id="opevContent" class="usecase-content disabled">
-                        <h5>Scenario 1 - Energy Guard curtails charging current of EV</h5>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">Load Control Limit (A)</div>
-                                <div id="opevLoadLimit" class="data-value">-</div>
-                            </div>
-                        </div>
-                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-                            <input id="writeOpevLimitValue" type="number" placeholder="limit (A)" style="width:90px" value="16"/>
-                            <label style="display:flex;align-items:center;gap:6px;margin:0"><input id="writeOpevLimitActive" type="checkbox" checked/> Active</label>
-                            <button id="sendWriteOpevLimit">Send Load Control Limit</button>
-                        </div>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">Minimum (A)</div>
-                                <div id="opevCurrentLimitMin" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Maximum (A)</div>
-                                <div id="opevCurrentLimitMax" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Default (A)</div>
-                                <div id="opevCurrentLimitDefault" class="data-value">-</div>
-                            </div>
-                        <h5>Scenario 2 - EV Checks Energy Guard availability</h5>
-                            <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-                                <div style="color:var(--muted);font-size:13px">CEM sends heartbeat to EVSE to indicate operational state</div>
-                            </div>
-                        </div>
-                        <h5>Scenario 3 - Energy Guard sends error state</h5>
-                        <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-                            <div style="color:var(--muted);font-size:13px">CEM sends error state to EVSE to indicate operational state</div>
-                        </div>
-                    </div>
-                    <div style="height:1px;background:grey;margin:6px 0"></div>
-
-                    <!-- OSCEV-->
-                    <div class="usecase-header">
-                        <div class="usecase-label">OSCEV</div>
-                        <span id="oscevBadge" class="support-badge unsupported">not supported</span>
-                    </div>
-                    <div id="oscevContent" class="usecase-content disabled">
-                        <h5>Scenario 1 - CEM sends recommended charging power</h5>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">Load Control Limit (A)</div>
-                                <div id="oscevLoadLimit" class="data-value">-</div>
-                            </div>
-                        </div>
-                        <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
-                            <input id="writeOscevLimitValue" type="number" placeholder="limit (A)" style="width:90px" value="16"/>
-                            <label style="display:flex;align-items:center;gap:6px;margin:0"><input id="writeOscevLimitActive" type="checkbox" checked/> Active</label>
-                            <button id="sendWriteOscevLimit">Send Load Control Limit</button>
-                        </div>
-                        <h5>Scenario 2 - Current Limits</h5>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">Minimum (A)</div>
-                                <div id="oscevCurrentLimitMin" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Maximum (A)</div>
-                                <div id="oscevCurrentLimitMax" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Default (A)</div>
-                                <div id="oscevCurrentLimitDefault" class="data-value">-</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="height:1px;background:grey;margin:6px 0"></div>
-
-                    <!-- EVSOC-->
-                    <div class="usecase-header">
-                        <div class="usecase-label">EVSOC</div>
-                        <span id="evsocBadge" class="support-badge unsupported">not supported</span>
-                    </div>
-                    <div id="evsocContent" class="usecase-content disabled">
-                        <h5>Scenario 1 - EV sends current state of charge</h5>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">State of Charge (%)</div>
-                                <div id="evsocStateOfCharge" class="data-value">-</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div style="height:1px;background:grey;margin:6px 0"></div>
-
-                    <!-- CEVC-->
-                    <div class="usecase-header">
-                        <div class="usecase-label">CEVC</div>
-                        <span id="cevcBadge" class="support-badge unsupported">not supported</span>
-                    </div>
-                    <div id="cevcContent" class="usecase-content disabled">
-                        <h5>Charge Strategy</h5>
-                        <div class="data-container">
-                            <div class="data-label">Current Strategy</div>
-                            <div id="cevcChargeStrategy" class="data-value">-</div>
-                        </div>
-                        <h5>Energy Demand</h5>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">Min Demand (Wh)</div>
-                                <div id="cevcMinDemand" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Opt Demand (Wh)</div>
-                                <div id="cevcOptDemand" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Max Demand (Wh)</div>
-                                <div id="cevcMaxDemand" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Duration Until Start (s)</div>
-                                <div id="cevcDurationStart" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Duration Until End (s)</div>
-                                <div id="cevcDurationEnd" class="data-value">-</div>
-                            </div>
-                        </div>
-                        <h5>Charge Plan</h5>
-                        <div class="data-container">
-                            <div class="data-label">Charge Plan Slots</div>
-                            <div id="cevcChargePlan" class="data-value" style="white-space:pre-wrap;font-size:11px;">-</div>
-                        </div>
-                    </div>
-                    <div style="height:1px;background:grey;margin:6px 0"></div>
-
-                    <!-- MPC-->
-                    <div class="usecase-header">
-                        <div class="usecase-label">MPC</div>
-                        <span id="mpcBadge" class="support-badge unsupported">not supported</span>
-                    </div>
-                    <div id="mpcContent" class="usecase-content disabled">
-                        <h5>Power Measurements</h5>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">Total Power (W)</div>
-                                <div id="mpcPower" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Power per Phase (W)</div>
-                                <div id="mpcPowerPerPhase" class="data-value">-</div>
-                            </div>
-                        </div>
-                        <h5>Current and Voltage</h5>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">Current per Phase (A)</div>
-                                <div id="mpcCurrentPerPhase" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Voltage per Phase (V)</div>
-                                <div id="mpcVoltagePerPhase" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Frequency (Hz)</div>
-                                <div id="mpcFrequency" class="data-value">-</div>
-                            </div>
-                        </div>
-                        <h5>Energy</h5>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">Energy Consumed (Wh)</div>
-                                <div id="mpcEnergyConsumed" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Energy Produced (Wh)</div>
-                                <div id="mpcEnergyProduced" class="data-value">-</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- MGCP-->
-                    <div class="usecase-header">
-                        <div class="usecase-label">MGCP</div>
-                        <span id="mgcpBadge" class="support-badge unsupported">not supported</span>
-                    </div>
-                    <div id="mgcpContent" class="usecase-content disabled">
-                        <h5>Grid Connection Point Data</h5>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">Power (W)</div>
-                                <div id="mgcpPower" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Power Limitation Factor (%)</div>
-                                <div id="mgcpPowerLimitationFactor" class="data-value">-</div>
-                            </div>
-                        </div>
-                        <h5>Current and Voltage</h5>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">Current per Phase (A)</div>
-                                <div id="mgcpCurrentPerPhase" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Voltage per Phase (V)</div>
-                                <div id="mgcpVoltagePerPhase" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Frequency (Hz)</div>
-                                <div id="mgcpFrequency" class="data-value">-</div>
-                            </div>
-                        </div>
-                        <h5>Energy</h5>
-                        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-                            <div class="data-container">
-                                <div class="data-label">Energy Feed In (Wh)</div>
-                                <div id="mgcpEnergyFeedIn" class="data-value">-</div>
-                            </div>
-                            <div class="data-container">
-                                <div class="data-label">Energy Consumed (Wh)</div>
-                                <div id="mgcpEnergyConsumed" class="data-value">-</div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-            </section>
-
-            <!-- Entities panel moved to left column under Usecases -->
-            <section id="entitiesLeft" class="card" style="padding:12px">
-                <h3 style="margin:0 0 6px 0">Entities</h3>
-                <div id="entitiesStatus" style="color:var(--muted); font-size:13px; margin-bottom:6px">Loading
-                    entities...
-                </div>
-                <ul id="entitiesList"></ul>
-            </section>
+    <!-- Peer Tabs Container -->
+    <div class="peer-tabs-container">
+        <!-- Tab Bar -->
+        <div class="peer-tabs-bar" id="peerTabsBar">
+            <button class="peer-tab active" data-tab="peers-list" onclick="switchPeerTab('peers-list')">
+                <span>Peers List</span>
+            </button>
         </div>
 
-        <div id="splitter" class="splitter" title="Drag to resize"></div>
-        <div class="card panel" id="parsedPanel"
-             style="padding:12px; flex:1; min-width:200px; display:flex; flex-direction:column;">
-            <h3 style="margin:0 0 6px 0">SPINE Messages / Trace Log</h3>
-            <div class="tab">
-                <button class="tablinks" onclick="openTab(event, 'spineContent')" id="defaultOpen">Spine Messages
-                </button>
-                <button class="tablinks" onclick="openTab(event, 'logContent')">Tracelog</button>
-            </div>
-            <!--<div style="display:flex; gap:8px; margin-bottom:8px;">
-                <button id="tabSpine" class="secondary">SPINE Messages</button>
-                <button id="tabLog" class="secondary">Trace Log</button>
-            </div>-->
-            <div id="tabContent" style="display:flex; flex-direction:column; gap:8px; flex:1;">
-                <div class="tabcontent" id="spineContent" style="display:block; flex:1; overflow:auto">
-                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-                        <div id="parsedTracesStatus" style="color:var(--muted); font-size:13px">Waiting for spine
-                            messages...
-                        </div>
-                        <div style="display:flex; gap:8px; align-items:center;">
-                            <label style="font-size:13px;color:var(--muted);"><input id="eebusJsonCheckbox"
-                                                                                     type="checkbox" checked
-                                                                                     style="margin-right:6px;">EEBUS
-                                Json Format</label>
-                            <button id="clearParsed" class="secondary" type="button">Clear Parsed</button>
-                        </div>
-                    </div>
-                    <ul id="parsedTracesList"></ul>
-
-                    <div id="traceDetailPanel">
-                        <div style="display:flex; align-items:center; gap:8px; justify-content:space-between;">
-                            <div style="font-size:13px;color:var(--muted);">Click an entry to view the full JSON</div>
-                            <button id="traceDetailClose" title="Close detail" style="display:none">✖</button>
-                        </div>
-                        <div id="traceDetail">Click an entry to view the full JSON.</div>
-                    </div>
+        <!-- Peers List Tab Content -->
+        <div class="peer-tab-content active" id="tab-peers-list">
+            <div class="card">
+                <div class="peers-list-header">
+                    <h3 style="margin:0">Discovered Peers</h3>
+                    <div style="color:var(--muted);font-size:13px" id="peersCount">Loading...</div>
                 </div>
-
-                <div class="tabcontent" id="logContent" style="display:none; flex-direction:column; gap:8px;">
-                    <div style="display:flex; align-items:center; justify-content:space-between;">
-                        <div style="color:var(--muted);">Trace Log (raw)</div>
-                        <button id="logsToBottomBtn"
-                                style="display:none; background:#2563eb; color:#fff; border:0; padding:6px 10px; border-radius:6px; cursor:pointer">
-                            Scroll to bottom
-                        </button>
-                    </div>
-                    <div id="logs"
-                         style="white-space:pre-wrap; background:#0b1220; color:#dbeafe; padding:10px; height:240px; overflow:auto; border-radius:6px">
-                        Connecting to log websocket...
-                    </div>
-                </div>
+                <table class="peers-table">
+                    <thead>
+                        <tr>
+                            <th>Status</th>
+                            <th>SKI</th>
+                            <th>Device Info</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="peersTableBody">
+                        <tr>
+                            <td colspan="4" style="text-align:center;padding:40px;color:var(--muted)">
+                                Loading peers...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
 
-    <!-- no footer -->
+    <!-- Templates for peer tabs (hidden, cloned dynamically) -->
+    <template id="peerTabTemplate">
+        <button class="peer-tab" data-tab="">
+            <span class="status-dot"></span>
+            <span class="tab-label"></span>
+            <span class="close-btn" title="Close tab">&times;</span>
+        </button>
+    </template>
+
+    <template id="peerContentTemplate">
+        <div class="peer-tab-content">
+            <div class="peer-content-layout">
+                <!-- Left Column: Data and Control + Entities -->
+                <div class="peer-content-left">
+                    <!-- Data and Control Panel -->
+                    <section class="card" style="padding:12px;flex:1;overflow:auto">
+                        <h3 style="margin:0 0 6px 0">Data and Control</h3>
+                        <div class="peer-ski-display" style="color:var(--muted);font-size:12px;margin-bottom:10px"></div>
+
+                        <div style="display:flex;flex-direction:column;gap:8px">
+                            <!-- LPC-->
+                            <div class="usecase-header">
+                                <div class="usecase-label">LPC</div>
+                                <span class="support-badge unsupported lpc-badge">not supported</span>
+                            </div>
+                            <div class="usecase-content disabled lpc-content">
+                                <h5>Scenario 1 - Control active power consumption</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">Limit (W)</div>
+                                        <div class="data-value lpc-limit-value">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Duration (s)</div>
+                                        <div class="data-value lpc-limit-dur">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Active</div>
+                                        <div class="data-value lpc-limit-active">-</div>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    <input class="write-limit-value" type="number" placeholder="value (W)" style="width:90px" value="3600"/>
+                                    <input class="write-limit-duration" type="number" placeholder="duration (s)" style="width:90px" value="600"/>
+                                    <label style="display:flex;align-items:center;gap:6px;margin:0"><input class="write-limit-active" type="checkbox" checked/> Active</label>
+                                    <button class="send-write-limit">Send Loadcontrol Limit</button>
+                                </div>
+                                <h5>Scenario 2 - Failsafe</h5>
+                                <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                                    <div class="data-container">
+                                        <div class="data-label">Failsafe Power (W)</div>
+                                        <div class="data-value lpc-failsafe-power">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Failsafe Duration (min)</div>
+                                        <div class="data-value lpc-failsafe-duration">-</div>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+                                    <input class="write-failsafe-power" type="number" placeholder="failsafe power (W)" style="width:120px" value="2500"/>
+                                    <input class="write-failsafe-duration" type="number" placeholder="duration (min)" style="width:120px" value="300"/>
+                                    <button class="send-write-failsafe-power">Send Failsafe Power</button>
+                                    <button class="send-write-failsafe-duration">Send Failsafe Duration</button>
+                                </div>
+                                <h5>Scenario 3 - Heartbeat</h5>
+                                <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                                    <div class="data-container">
+                                        <div class="data-label">Heartbeat Received</div>
+                                        <div class="data-value lpc-heartbeat">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Last Heartbeat Time</div>
+                                        <div class="data-value lpc-heartbeat-timestamp">-</div>
+                                    </div>
+                                </div>
+                                <h5>Scenario 4 - Constraints</h5>
+                                <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                                    <div class="data-container">
+                                        <div class="data-label">Maximum possible Power Consumption (W)</div>
+                                        <div class="data-value lpc-max-nominal-power">-</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="height:1px;background:grey;margin:6px 0"></div>
+                            <!-- LPP-->
+                            <div class="usecase-header">
+                                <div class="usecase-label">LPP</div>
+                                <span class="support-badge unsupported lpp-badge">not supported</span>
+                            </div>
+                            <div class="usecase-content disabled lpp-content">
+                                <h5>Scenario 1 - Control active power production</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">Limit (W)</div>
+                                        <div class="data-value lpp-limit-value">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Duration (s)</div>
+                                        <div class="data-value lpp-limit-dur">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Active</div>
+                                        <div class="data-value lpp-limit-active">-</div>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:8px; align-items:center;">
+                                    <input class="write-lpp-limit-value" type="number" placeholder="value (W)" style="width:90px" value="3600"/>
+                                    <input class="write-lpp-limit-duration" type="number" placeholder="duration (s)" style="width:90px" value="600"/>
+                                    <label style="display:flex;align-items:center;gap:6px;margin:0"><input class="write-lpp-limit-active" type="checkbox" checked/> Active</label>
+                                    <button class="send-write-lpp-limit">Send Production Limit</button>
+                                </div>
+                                <h5>Scenario 2 - Failsafe</h5>
+                                <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                                    <div class="data-container">
+                                        <div class="data-label">Failsafe Power (W)</div>
+                                        <div class="data-value lpp-failsafe-value">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Failsafe Duration (min)</div>
+                                        <div class="data-value lpp-failsafe-dur">-</div>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+                                    <input class="write-lpp-failsafe-power" type="number" placeholder="failsafe power (W)" style="width:120px" value="2500"/>
+                                    <input class="write-lpp-failsafe-duration" type="number" placeholder="duration (min)" style="width:120px" value="300"/>
+                                    <button class="send-write-lpp-failsafe-power">Send Failsafe Power</button>
+                                    <button class="send-write-lpp-failsafe-duration">Send Failsafe Duration</button>
+                                </div>
+                                <h5>Scenario 3 - Heartbeat</h5>
+                                <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                                    <div class="data-container">
+                                        <div class="data-label">Heartbeat Received</div>
+                                        <div class="data-value lpp-heartbeat">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Last Heartbeat Time</div>
+                                        <div class="data-value lpp-heartbeat-timestamp">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                            <!-- EVSECC-->
+                            <div class="usecase-header">
+                                <div class="usecase-label">EVSECC</div>
+                                <span class="support-badge unsupported evsecc-badge">not supported</span>
+                            </div>
+                            <div class="usecase-content disabled evsecc-content">
+                                <h5>Scenario 1 - EVSE sends manufacturer info</h5>
+                                <div class="data-container">
+                                    <div class="data-label">Manufacturer Data</div>
+                                    <div class="data-value evsecc-manufacturer">-</div>
+                                </div>
+                                <h5>Scenario 2 - EVSE sends error state</h5>
+                                <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                                    <div class="data-container">
+                                        <div class="data-label">Operating State</div>
+                                        <div class="data-value evsecc-operating-state">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Error Message</div>
+                                        <div class="data-value evsecc-error-message">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                            <!-- EVCC-->
+                            <div class="usecase-header">
+                                <div class="usecase-label">EVCC</div>
+                                <span class="support-badge unsupported evcc-badge">not supported</span>
+                            </div>
+                            <div class="usecase-content disabled evcc-content">
+                                <h5>Scenario 1 - EV Connected</h5>
+                                <div class="data-container">
+                                    <div class="data-label">Operating State</div>
+                                    <div class="data-value evcc-ev-connected">-</div>
+                                </div>
+                                <h5>Scenario 2 - Communication Standard</h5>
+                                <div class="data-container">
+                                    <div class="data-label">Communication Standard</div>
+                                    <div class="data-value evcc-comm-standard">-</div>
+                                </div>
+                                <h5>Scenario 3 - Asymmetric Charging</h5>
+                                <div class="data-container">
+                                    <div class="data-label">Asymmetric Charging supported</div>
+                                    <div class="data-value evcc-asymmetric-charging">-</div>
+                                </div>
+                                <h5>Scenario 4 - EV Identification</h5>
+                                <div class="data-container">
+                                    <div class="data-label">MAC type</div>
+                                    <div class="data-value evcc-identification-type">-</div>
+                                </div>
+                                <div class="data-container">
+                                    <div class="data-label">MAC Address</div>
+                                    <div class="data-value evcc-identification-value">-</div>
+                                </div>
+                                <h5>Scenario 5 - Manufacturer</h5>
+                                <div class="data-container">
+                                    <div class="data-label">Manufacturer Data</div>
+                                    <div class="data-value evcc-manufacturer">-</div>
+                                </div>
+                                <h5>Scenario 6 - Charging Power Limits</h5>
+                                <div class="data-container">
+                                    <div class="data-label">Minimum Charging Power (W)</div>
+                                    <div class="data-value evcc-charging-limits-min">-</div>
+                                </div>
+                                <div class="data-container">
+                                    <div class="data-label">Maximum Charging Power (W)</div>
+                                    <div class="data-value evcc-charging-limits-max">-</div>
+                                </div>
+                                <div class="data-container">
+                                    <div class="data-label">Standby Charging Power (W)</div>
+                                    <div class="data-value evcc-charging-limits-standby">-</div>
+                                </div>
+                                <h5>Scenario 7 - Sleep Mode</h5>
+                                <div class="data-container">
+                                    <div class="data-label">EV Sleep Mode active</div>
+                                    <div class="data-value evcc-sleep-mode">-</div>
+                                </div>
+                            </div>
+                            <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                            <!-- EVCEM-->
+                            <div class="usecase-header">
+                                <div class="usecase-label">EVCEM</div>
+                                <span class="support-badge unsupported evcem-badge">not supported</span>
+                            </div>
+                            <div class="usecase-content disabled evcem-content">
+                                <h5>Scenario 1 - Charging Current</h5>
+                                <div class="data-container">
+                                    <div class="data-label">Charging Current per Phase (A)</div>
+                                    <div class="data-value evcem-charging-current">-</div>
+                                </div>
+                                <h5>Scenario 2 - Charging Power</h5>
+                                <div class="data-container">
+                                    <div class="data-label">Charging Power per Phase (W)</div>
+                                    <div class="data-value evcem-charging-power">-</div>
+                                </div>
+                                <h5>Scenario 3 - Charged Energy</h5>
+                                <div class="data-container">
+                                    <div class="data-label">Energy Charged (Wh)</div>
+                                    <div class="data-value evcem-charged-energy">-</div>
+                                </div>
+                            </div>
+                            <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                            <!-- OPEV-->
+                            <div class="usecase-header">
+                                <div class="usecase-label">OPEV</div>
+                                <span class="support-badge unsupported opev-badge">not supported</span>
+                            </div>
+                            <div class="usecase-content disabled opev-content">
+                                <h5>Scenario 1 - Load Control Limit</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">Load Control Limit (A)</div>
+                                        <div class="data-value opev-load-limit">-</div>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                                    <input class="write-opev-limit-value" type="number" placeholder="limit (A)" style="width:90px" value="16"/>
+                                    <label style="display:flex;align-items:center;gap:6px;margin:0"><input class="write-opev-limit-active" type="checkbox" checked/> Active</label>
+                                    <button class="send-write-opev-limit">Send Load Control Limit</button>
+                                </div>
+                                <h5>Scenario 2 - Current Limits</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">Minimum (A)</div>
+                                        <div class="data-value opev-current-limit-min">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Maximum (A)</div>
+                                        <div class="data-value opev-current-limit-max">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Default (A)</div>
+                                        <div class="data-value opev-current-limit-default">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                            <!-- OSCEV-->
+                            <div class="usecase-header">
+                                <div class="usecase-label">OSCEV</div>
+                                <span class="support-badge unsupported oscev-badge">not supported</span>
+                            </div>
+                            <div class="usecase-content disabled oscev-content">
+                                <h5>Scenario 1 - Load Control Limit</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">Load Control Limit (A)</div>
+                                        <div class="data-value oscev-load-limit">-</div>
+                                    </div>
+                                </div>
+                                <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+                                    <input class="write-oscev-limit-value" type="number" placeholder="limit (A)" style="width:90px" value="16"/>
+                                    <label style="display:flex;align-items:center;gap:6px;margin:0"><input class="write-oscev-limit-active" type="checkbox" checked/> Active</label>
+                                    <button class="send-write-oscev-limit">Send Load Control Limit</button>
+                                </div>
+                                <h5>Scenario 2 - Current Limits</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">Minimum (A)</div>
+                                        <div class="data-value oscev-current-limit-min">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Maximum (A)</div>
+                                        <div class="data-value oscev-current-limit-max">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Default (A)</div>
+                                        <div class="data-value oscev-current-limit-default">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                            <!-- EVSOC-->
+                            <div class="usecase-header">
+                                <div class="usecase-label">EVSOC</div>
+                                <span class="support-badge unsupported evsoc-badge">not supported</span>
+                            </div>
+                            <div class="usecase-content disabled evsoc-content">
+                                <h5>Scenario 1 - State of Charge</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">State of Charge (%)</div>
+                                        <div class="data-value evsoc-state-of-charge">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                            <!-- CEVC-->
+                            <div class="usecase-header">
+                                <div class="usecase-label">CEVC</div>
+                                <span class="support-badge unsupported cevc-badge">not supported</span>
+                            </div>
+                            <div class="usecase-content disabled cevc-content">
+                                <h5>Charge Strategy</h5>
+                                <div class="data-container">
+                                    <div class="data-label">Current Strategy</div>
+                                    <div class="data-value cevc-charge-strategy">-</div>
+                                </div>
+                                <h5>Energy Demand</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">Min Demand (Wh)</div>
+                                        <div class="data-value cevc-min-demand">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Opt Demand (Wh)</div>
+                                        <div class="data-value cevc-opt-demand">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Max Demand (Wh)</div>
+                                        <div class="data-value cevc-max-demand">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Duration Until Start (s)</div>
+                                        <div class="data-value cevc-duration-start">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Duration Until End (s)</div>
+                                        <div class="data-value cevc-duration-end">-</div>
+                                    </div>
+                                </div>
+                                <h5>Charge Plan</h5>
+                                <div class="data-container">
+                                    <div class="data-label">Charge Plan Slots</div>
+                                    <div class="data-value cevc-charge-plan" style="white-space:pre-wrap;font-size:11px;">-</div>
+                                </div>
+                            </div>
+                            <div style="height:1px;background:grey;margin:6px 0"></div>
+
+                            <!-- MPC-->
+                            <div class="usecase-header">
+                                <div class="usecase-label">MPC</div>
+                                <span class="support-badge unsupported mpc-badge">not supported</span>
+                            </div>
+                            <div class="usecase-content disabled mpc-content">
+                                <h5>Power Measurements</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">Total Power (W)</div>
+                                        <div class="data-value mpc-power">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Power per Phase (W)</div>
+                                        <div class="data-value mpc-power-per-phase">-</div>
+                                    </div>
+                                </div>
+                                <h5>Current and Voltage</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">Current per Phase (A)</div>
+                                        <div class="data-value mpc-current-per-phase">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Voltage per Phase (V)</div>
+                                        <div class="data-value mpc-voltage-per-phase">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Frequency (Hz)</div>
+                                        <div class="data-value mpc-frequency">-</div>
+                                    </div>
+                                </div>
+                                <h5>Energy</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">Energy Consumed (Wh)</div>
+                                        <div class="data-value mpc-energy-consumed">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Energy Produced (Wh)</div>
+                                        <div class="data-value mpc-energy-produced">-</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- MGCP-->
+                            <div class="usecase-header">
+                                <div class="usecase-label">MGCP</div>
+                                <span class="support-badge unsupported mgcp-badge">not supported</span>
+                            </div>
+                            <div class="usecase-content disabled mgcp-content">
+                                <h5>Grid Connection Point Data</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">Power (W)</div>
+                                        <div class="data-value mgcp-power">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Power Limitation Factor (%)</div>
+                                        <div class="data-value mgcp-power-limitation-factor">-</div>
+                                    </div>
+                                </div>
+                                <h5>Current and Voltage</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">Current per Phase (A)</div>
+                                        <div class="data-value mgcp-current-per-phase">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Voltage per Phase (V)</div>
+                                        <div class="data-value mgcp-voltage-per-phase">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Frequency (Hz)</div>
+                                        <div class="data-value mgcp-frequency">-</div>
+                                    </div>
+                                </div>
+                                <h5>Energy</h5>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                                    <div class="data-container">
+                                        <div class="data-label">Energy Feed In (Wh)</div>
+                                        <div class="data-value mgcp-energy-feed-in">-</div>
+                                    </div>
+                                    <div class="data-container">
+                                        <div class="data-label">Energy Consumed (Wh)</div>
+                                        <div class="data-value mgcp-energy-consumed">-</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Entities Panel -->
+                    <section class="card" style="padding:12px">
+                        <h3 style="margin:0 0 6px 0">Entities</h3>
+                        <div class="entities-status" style="color:var(--muted); font-size:13px; margin-bottom:6px">Loading entities...</div>
+                        <ul class="entities-list"></ul>
+                    </section>
+                </div>
+
+                <!-- Right Column: SPINE Messages & Logs -->
+                <div class="peer-content-right card" style="padding:12px">
+                    <h3 style="margin:0 0 6px 0">SPINE Messages / Trace Log</h3>
+                    <div class="sub-tabs">
+                        <button class="active" onclick="openSubTab(this, 'spine')">Spine Messages</button>
+                        <button onclick="openSubTab(this, 'log')">Trace Log</button>
+                    </div>
+                    <div class="subtab-content active" data-subtab="spine">
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                            <div class="parsed-traces-status" style="color:var(--muted); font-size:13px">Waiting for spine messages...</div>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                <label style="font-size:13px;color:var(--muted);"><input class="eebus-json-checkbox" type="checkbox" checked style="margin-right:6px;">EEBUS Json Format</label>
+                                <button class="clear-parsed-btn secondary" type="button">Clear Parsed</button>
+                            </div>
+                        </div>
+                        <ul class="parsed-traces-list"></ul>
+                        <div class="trace-detail-panel" style="position:relative;margin-top:8px;display:flex;flex-direction:column;gap:8px;">
+                            <div style="display:flex; align-items:center; gap:8px; justify-content:space-between;">
+                                <div style="font-size:13px;color:var(--muted);">Click an entry to view the full JSON</div>
+                                <button class="trace-detail-close" title="Close detail" type="button" style="display:none;background:#0b1220;border:1px solid rgba(255,255,255,0.2);color:#fff;cursor:pointer;padding:2px 8px;border-radius:6px">Close</button>
+                            </div>
+                            <div class="trace-detail">Click an entry to view the full JSON.</div>
+                        </div>
+                    </div>
+                    <div class="subtab-content" data-subtab="log">
+                        <div style="display:flex; align-items:center; justify-content:space-between;">
+                            <div style="color:var(--muted);">Trace Log (raw)</div>
+                            <button class="logs-to-bottom-btn" style="display:none; background:#2563eb; color:#fff; border:0; padding:6px 10px; border-radius:6px; cursor:pointer">Scroll to bottom</button>
+                        </div>
+                        <div class="peer-logs">Waiting for logs...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
 </div>
 
 <script>
-    // --- UI helpers ---
-    function intInputSanitize(el) {
-        if (!el) return;
-        el.addEventListener('input', () => {
-            // remove non-digit characters
-            const v = el.value;
-            const m = v.match(/^\d*/);
-            if (m && m[0] !== v) el.value = m[0];
-        });
-    }
+// ========== STATE MANAGEMENT ==========
+const peersState = {
+    peers: [],
+    activeTab: 'peers-list',
+    peerTabs: new Set(),
+    peerData: {},
+    ws: null,
+    config: null
+};
 
-    const flashElement = (el) => {
-        if (!el) return;
-        el.classList.remove('flash-change');
-        // force reflow to restart animation
-        void el.offsetWidth;
-        el.classList.add('flash-change');
-
-        function onEnd() {
-            el.classList.remove('flash-change');
-            el.removeEventListener('animationend', onEnd);
-        }
-
-        el.addEventListener('animationend', onEnd);
+function createPeerData(ski) {
+    return {
+        ski: ski,
+        usecaseData: {},
+        entities: [],
+        traces: [],
+        logs: [],
+        usecaseSupport: {},
+        connected: false,
+        traceIdCounter: 1,
+        lastShownTrace: null,
+        expandedStates: {},
+        logsAutoScroll: true
     };
-    // Setup elements safely
-    const cmdSelect = document.getElementById('cmdSelect');
+}
 
-    function openTab(evt, tabName) {
-        // Declare all variables
-        var i, tabcontent, tablinks;
+// ========== CONFIGURATION ==========
 
-        // Get all elements with class="tabcontent" and hide them
-        tabcontent = document.getElementsByClassName("tabcontent");
-        for (i = 0; i < tabcontent.length; i++) {
-            tabcontent[i].style.display = "none";
-        }
-
-        // Get all elements with class="tablinks" and remove the class "active"
-        tablinks = document.getElementsByClassName("tablinks");
-        for (i = 0; i < tablinks.length; i++) {
-            tablinks[i].className = tablinks[i].className.replace(" active", "");
-        }
-
-        // Show the current tab, and add an "active" class to the button that opened the tab
-        document.getElementById(tabName).style.display = "block";
-        evt.currentTarget.className += " active";
+async function loadConfig() {
+    try {
+        const res = await fetch('/api/config');
+        if (!res.ok) throw new Error('Failed to fetch config');
+        const config = await res.json();
+        peersState.config = config;
+        console.log('Config loaded:', config);
+    } catch (err) {
+        console.error('Error loading config:', err);
     }
+}
 
-    document.getElementById("defaultOpen").click();
+function hideDisabledUsecases(container) {
+    if (!peersState.config || !peersState.config.usecases) return;
 
-    // Usecases - setUsecase updates display toggles for usecase panels
-    function displaySupportedUsecases(list) {
-        if (!list || list.length === 0) return;
-        const seen = new Set();
-        list.forEach(u => {
-            if (!u || !u.name) return;
-            if (seen.has(u.name)) return;
-            seen.add(u.name);
-            setUsecase(u.name, u.supported);
+    const isSeparator = (el) => {
+        if (!el || !el.tagName || el.tagName.toLowerCase() !== 'div') return false;
+        if (el.classList && el.classList.contains('usecase-separator')) return true;
+        const style = (el.getAttribute('style') || '').replace(/\s+/g, '').toLowerCase();
+        return style.includes('height:1px') && style.includes('background:grey');
+    };
+
+    const usecases = Object.keys(peersState.config.usecases || {});
+
+    usecases.forEach(uc => {
+        const cfg = peersState.config.usecases[uc];
+        if (!cfg || cfg.enabled === true) return;
+
+        // content blocks use the pattern `.{uc}-content` (e.g. .lpc-content)
+        const contentEls = Array.from(container.querySelectorAll('.' + uc + '-content'));
+        if (contentEls.length === 0) {
+            const alt = container.querySelector('.' + uc.toLowerCase() + '-content');
+            if (alt) contentEls.push(alt);
+        }
+
+        contentEls.forEach(contentEl => {
+            contentEl.style.display = 'none';
+
+            const prev = contentEl.previousElementSibling;
+            if (prev && prev.classList && prev.classList.contains('usecase-header')) {
+                prev.style.display = 'none';
+            } else {
+                const badge = container.querySelector('.' + uc + '-badge');
+                if (badge) {
+                    const header = badge.closest('.usecase-header');
+                    if (header) header.style.display = 'none';
+                }
+            }
+
+            const next = contentEl.nextElementSibling;
+            if (isSeparator(next)) {
+                next.style.display = 'none';
+            }
+        });
+    });
+
+    // Normalize separators: only show between visible usecase blocks
+    const usecaseContainer = container.querySelector('.peer-content-left section.card > div[style*="flex-direction:column"]');
+    if (!usecaseContainer) return;
+
+    const allSeparators = Array.from(usecaseContainer.children).filter(isSeparator);
+    allSeparators.forEach(sep => {
+        sep.style.display = 'none';
+    });
+
+    const allContents = Array.from(usecaseContainer.querySelectorAll('.usecase-content'));
+    const visibleContents = allContents.filter(el => el.style.display !== 'none');
+
+    visibleContents.forEach((contentEl, idx) => {
+        if (idx === visibleContents.length - 1) return;
+        const next = contentEl.nextElementSibling;
+        if (isSeparator(next)) {
+            next.style.display = '';
+        }
+    });
+}
+
+// ========== PEER TABS MANAGEMENT ==========
+
+function switchPeerTab(tabId) {
+    document.querySelectorAll('.peer-tab-content').forEach(el => {
+        el.classList.remove('active');
+    });
+    document.querySelectorAll('.peer-tab').forEach(el => {
+        el.classList.remove('active');
+    });
+    
+    const content = document.getElementById('tab-' + tabId);
+    if (content) {
+        content.classList.add('active');
+    }
+    
+    const tab = document.querySelector(`.peer-tab[data-tab="${tabId}"]`);
+    if (tab) {
+        tab.classList.add('active');
+    }
+    
+    peersState.activeTab = tabId;
+    
+    if (tabId !== 'peers-list') {
+        const ski = tabId.replace('peer-', '');
+        refreshPeerData(ski);
+    }
+}
+
+function openPeerTab(ski) {
+    const tabId = 'peer-' + ski;
+    
+    if (peersState.peerTabs.has(ski)) {
+        switchPeerTab(tabId);
+        return;
+    }
+    
+    if (!peersState.peerData[ski]) {
+        peersState.peerData[ski] = createPeerData(ski);
+    }
+    
+    const peer = peersState.peers.find(p => p.ski === ski);
+    // Show device name if available, otherwise show full SKI (shortened only if too long for tab)
+    let label;
+    if (peer && peer.deviceName) {
+        label = peer.deviceName;
+    } else if (peer && peer.brand && peer.model) {
+        label = `${peer.brand} ${peer.model}`;
+    } else {
+        label = ski.length > 20 ? ski.substring(0, 20) + '...' : ski;
+    }
+    
+    const tabTemplate = document.getElementById('peerTabTemplate');
+    const tabBtn = tabTemplate.content.cloneNode(true).querySelector('.peer-tab');
+    tabBtn.dataset.tab = tabId;
+    tabBtn.querySelector('.tab-label').textContent = label;
+    tabBtn.querySelector('.status-dot').classList.add(peer && peer.connected ? 'connected' : 'disconnected');
+    
+    tabBtn.querySelector('.close-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        closePeerTab(ski);
+    });
+    
+    tabBtn.addEventListener('click', () => switchPeerTab(tabId));
+    
+    document.getElementById('peerTabsBar').appendChild(tabBtn);
+    
+    const contentTemplate = document.getElementById('peerContentTemplate');
+    const content = contentTemplate.content.cloneNode(true).querySelector('.peer-tab-content');
+    content.id = 'tab-' + tabId;
+    content.dataset.ski = ski;
+    
+    content.querySelector('.peer-ski-display').textContent = 'SKI: ' + ski;
+    
+    // Hide disabled usecases based on config
+    hideDisabledUsecases(content);
+    
+    document.querySelector('.peer-tabs-container').appendChild(content);
+    
+    initPeerTabHandlers(content, ski);
+    
+    peersState.peerTabs.add(ski);
+    switchPeerTab(tabId);
+    refreshPeerData(ski);
+}
+
+function closePeerTab(ski) {
+    const tabId = 'peer-' + ski;
+    
+    const tabBtn = document.querySelector(`.peer-tab[data-tab="${tabId}"]`);
+    if (tabBtn) tabBtn.remove();
+    
+    const content = document.getElementById('tab-' + tabId);
+    if (content) content.remove();
+    
+    peersState.peerTabs.delete(ski);
+    
+    if (peersState.activeTab === tabId) {
+        switchPeerTab('peers-list');
+    }
+}
+
+function updatePeerTabStatus(ski, connected) {
+    const tabId = 'peer-' + ski;
+    const tabBtn = document.querySelector(`.peer-tab[data-tab="${tabId}"]`);
+    if (tabBtn) {
+        const dot = tabBtn.querySelector('.status-dot');
+        dot.classList.remove('connected', 'disconnected');
+        dot.classList.add(connected ? 'connected' : 'disconnected');
+    }
+    
+    if (peersState.peerData[ski]) {
+        peersState.peerData[ski].connected = connected;
+    }
+}
+
+// ========== PEERS LIST ==========
+
+async function connectToPeer(ski) {
+    try {
+        const res = await fetch('/api/connect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ski: ski })
+        });
+        if (!res.ok) throw new Error('Failed to connect');
+        const result = await res.json();
+        console.log('Connecting to peer:', result);
+        // Open the peer tab automatically when connecting
+        openPeerTab(ski);
+    } catch (err) {
+        console.error('Error connecting to peer:', err);
+        alert('Failed to connect: ' + err.message);
+    }
+}
+
+async function fetchPeers() {
+    try {
+        const res = await fetch('/api/peers');
+        if (!res.ok) throw new Error('Failed to fetch peers');
+        const peers = await res.json();
+        updatePeersList(peers);
+    } catch (err) {
+        console.error('Error fetching peers:', err);
+        document.getElementById('peersTableBody').innerHTML = `
+            <tr><td colspan="4" style="text-align:center;padding:40px;color:var(--danger)">
+                Error loading peers: ${err.message}
+            </td></tr>
+        `;
+    }
+}
+
+function updatePeersList(peers) {
+    peersState.peers = peers;
+    document.getElementById('peersCount').textContent = peers.length + ' peer' + (peers.length !== 1 ? 's' : '') + ' discovered';
+    
+    const tbody = document.getElementById('peersTableBody');
+    
+    if (peers.length === 0) {
+        tbody.innerHTML = `
+            <tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted)">
+                No peers discovered yet. Waiting for EEBUS devices...
+            </td></tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = peers.map(peer => {
+        const statusClass = peer.connected ? 'status-connected' : 'status-disconnected';
+        const statusText = peer.connected ? 'Connected' : 'Disconnected';
+        
+        // Build device info string
+        let deviceInfo = 'Unknown Device';
+        if (peer.brand && peer.model) {
+            deviceInfo = `${peer.brand} ${peer.model}`;
+        } else if (peer.deviceName) {
+            deviceInfo = peer.deviceName;
+        } else if (peer.brand) {
+            deviceInfo = peer.brand;
+        } else if (peer.model) {
+            deviceInfo = peer.model;
+        }
+        
+        // Additional details
+        let details = [];
+        if (peer.deviceType && peer.deviceType !== 'Unknown') details.push(peer.deviceType);
+        if (peer.serial) details.push(`SN: ${peer.serial}`);
+        if (peer.identifier && peer.identifier !== peer.ski) details.push(`ID: ${peer.identifier}`);
+        
+        const detailsHtml = details.length > 0 ? `<br><small style="color:var(--muted)">${details.join(' | ')}</small>` : '';
+        
+        // Show Connect button for disconnected peers, Open button for connected
+        const actionButton = peer.connected 
+            ? `<button onclick="openPeerTab('${peer.ski}')">Open</button>`
+            : `<button onclick="connectToPeer('${peer.ski}')" style="background:var(--success);color:white">Connect</button>`;
+        
+        return `
+            <tr>
+                <td class="${statusClass}">${statusText}</td>
+                <td class="ski-cell" style="font-family:monospace;font-size:12px">${peer.ski}</td>
+                <td>${deviceInfo}${detailsHtml}</td>
+                <td>${actionButton}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    peers.forEach(peer => {
+        updatePeerTabStatus(peer.ski, peer.connected);
+    });
+}
+
+// ========== PEER TAB INITIALIZATION ==========
+
+function initPeerTabHandlers(container, ski) {
+    const apiWriteForPeer = (payload) => apiWrite({...payload, ski});
+    
+    container.querySelector('.send-write-limit').addEventListener('click', () => {
+        const val = parseFloat(container.querySelector('.write-limit-value').value) || 0;
+        const dur = parseInt(container.querySelector('.write-limit-duration').value, 10) || 0;
+        const active = container.querySelector('.write-limit-active').checked;
+        apiWriteForPeer({cmd: 'writeLPCConsumptionLimit', durationSeconds: dur, value: val, isActive: active});
+    });
+    
+    container.querySelector('.send-write-failsafe-power').addEventListener('click', () => {
+        const p = parseFloat(container.querySelector('.write-failsafe-power').value) || 0;
+        apiWriteForPeer({cmd: 'writeLPCFailsafeValue', failsafePower: p});
+    });
+    
+    container.querySelector('.send-write-failsafe-duration').addEventListener('click', () => {
+        const m = parseInt(container.querySelector('.write-failsafe-duration').value, 10) || 0;
+        apiWriteForPeer({cmd: 'writeLPCFailsafeDuration', durationMinutes: m});
+    });
+    
+    container.querySelector('.send-write-lpp-limit').addEventListener('click', () => {
+        const val = parseFloat(container.querySelector('.write-lpp-limit-value').value) || 0;
+        const dur = parseInt(container.querySelector('.write-lpp-limit-duration').value, 10) || 0;
+        const active = container.querySelector('.write-lpp-limit-active').checked;
+        apiWriteForPeer({cmd: 'writeLPPProductionLimit', durationSeconds: dur, value: val, isActive: active});
+    });
+    
+    container.querySelector('.send-write-lpp-failsafe-power').addEventListener('click', () => {
+        const p = parseFloat(container.querySelector('.write-lpp-failsafe-power').value) || 0;
+        apiWriteForPeer({cmd: 'writeLPPFailsafeValue', failsafePower: p});
+    });
+    
+    container.querySelector('.send-write-lpp-failsafe-duration').addEventListener('click', () => {
+        const m = parseInt(container.querySelector('.write-lpp-failsafe-duration').value, 10) || 0;
+        apiWriteForPeer({cmd: 'writeLPPFailsafeDuration', durationMinutes: m});
+    });
+    
+    container.querySelector('.send-write-oscev-limit').addEventListener('click', () => {
+        const val = parseFloat(container.querySelector('.write-oscev-limit-value').value) || 0;
+        const active = container.querySelector('.write-oscev-limit-active').checked;
+        apiWriteForPeer({cmd: 'writeOSCEVLoadControlLimits', value: val, isActive: active});
+    });
+    
+    container.querySelector('.send-write-opev-limit').addEventListener('click', () => {
+        const val = parseFloat(container.querySelector('.write-opev-limit-value').value) || 0;
+        const active = container.querySelector('.write-opev-limit-active').checked;
+        apiWriteForPeer({cmd: 'writeOPEVLoadControlLimits', value: val, isActive: active});
+    });
+    
+    container.querySelector('.clear-parsed-btn').addEventListener('click', () => {
+        clearPeerTraces(ski);
+    });
+    
+    container.querySelector('.trace-detail-close').addEventListener('click', function() {
+        container.querySelector('.trace-detail').style.display = 'none';
+        this.style.display = 'none';
+        peersState.peerData[ski].lastShownTrace = null;
+    });
+
+    const formatToggle = container.querySelector('.eebus-json-checkbox');
+    if (formatToggle) {
+        formatToggle.addEventListener('change', () => {
+            const peerData = peersState.peerData[ski];
+            if (peerData && peerData.lastShownTrace) {
+                updateTraceDetailContent(container, peerData.lastShownTrace);
+            }
         });
     }
+    
+    const logsEl = container.querySelector('.peer-logs');
+    const logsBtn = container.querySelector('.logs-to-bottom-btn');
+    
+    logsBtn.addEventListener('click', () => {
+        peersState.peerData[ski].logsAutoScroll = true;
+        logsEl.scrollTop = logsEl.scrollHeight;
+        logsBtn.style.display = 'none';
+    });
+    
+    logsEl.addEventListener('scroll', () => {
+        const atBottom = (logsEl.scrollHeight - logsEl.scrollTop - logsEl.clientHeight) <= 8;
+        peersState.peerData[ski].logsAutoScroll = atBottom;
+        logsBtn.style.display = atBottom ? 'none' : 'inline-block';
+    });
+}
 
-    async function loadUsecases() {
+function openSubTab(btn, tabName) {
+    const container = btn.closest('.peer-content-right') || document.querySelector('.peer-tab-content.active');
+    if (!container) return;
+    
+    container.querySelectorAll('.subtab-content').forEach(el => {
+        el.classList.remove('active');
+    });
+    
+    container.querySelectorAll('.sub-tabs button').forEach(el => {
+        el.classList.remove('active');
+    });
+    
+    const content = container.querySelector(`.subtab-content[data-subtab="${tabName}"]`);
+    if (content) {
+        content.classList.add('active');
+    }
+    btn.classList.add('active');
+}
+
+// ========== PEER DATA REFRESH ==========
+
+async function refreshPeerData(ski) {
+    try {
+        const res = await fetch(`/api/usecasedata?ski=${encodeURIComponent(ski)}`);
+        if (res.ok) {
+            const data = await res.json();
+            updatePeerUsecaseData(ski, data);
+        }
+    } catch (err) {
+        console.error('Error fetching usecase data for peer', ski, err);
+    }
+    
+    try {
+        const res = await fetch(`/api/entities?ski=${encodeURIComponent(ski)}`);
+        if (res.ok) {
+            const data = await res.json();
+            updatePeerEntities(ski, data.entities || data);
+        }
+    } catch (err) {
+        console.error('Error fetching entities for peer', ski, err);
+    }
+}
+
+// ========== WEBSOCKET HANDLING ==========
+
+function connectWebSocket() {
+    const protocol = (location.protocol === 'https:') ? 'wss:' : 'ws:';
+    const wsUrl = protocol + '//' + location.host + '/ws/logs';
+    
+    const ws = new WebSocket(wsUrl);
+    
+    ws.addEventListener('open', () => {
+        console.log('WebSocket connected');
+    });
+    
+    ws.addEventListener('message', handleWebSocketMessage);
+    
+    ws.addEventListener('close', () => {
+        console.log('WebSocket closed, reconnecting...');
+        setTimeout(connectWebSocket, 1000);
+    });
+    
+    ws.addEventListener('error', (err) => {
+        console.error('WebSocket error:', err);
+    });
+    
+    peersState.ws = ws;
+}
+
+function handleWebSocketMessage(ev) {
+    const line = (typeof ev.data === 'string') ? ev.data : JSON.stringify(ev.data);
+    
+    let parsed = null;
+    try {
+        parsed = JSON.parse(line);
+    } catch (e) {
+        parsed = null;
+    }
+    
+    if (parsed && parsed.type === 'peers') {
+        updatePeersList(parsed.peers || []);
+        return;
+    }
+    
+    if (parsed && parsed.type === 'usecase') {
+        const ski = parsed.ski;
+        if (ski && peersState.peerData[ski]) {
+            peersState.peerData[ski].usecaseSupport[parsed.name] = parsed.supported;
+            updatePeerUsecaseDisplay(ski, parsed.name, parsed.supported);
+        }
+        return;
+    }
+    
+    if (parsed && parsed.type === 'entities') {
+        const ski = parsed.ski;
+        if (ski) {
+            updatePeerEntities(ski, parsed.entities || []);
+        }
+        return;
+    }
+    
+    const ski = extractSKIFromMessage(line);
+
+    // Match TRACE/Trace followed by SKI (40 hex chars) followed by Recv/Send
+    const isTrace = /TRACE\s+[a-fA-F0-9]{40}\s+(Recv|Send)/i.test(line) || /Trace\s+[a-fA-F0-9]{40}\s+(Recv|Send)/i.test(line);
+    if (isTrace) {
+        handleTraceMessage(ski, line, parsed);
+        return;
+    }
+    
+    if (ski) {
+        addPeerLog(ski, line);
+    } else {
+        Object.keys(peersState.peerData).forEach(peerSki => {
+            addPeerLog(peerSki, line);
+        });
+    }
+}
+
+function extractSKIFromMessage(line) {
+    // SKI is exactly 40 hex characters (SHA-1 hash)
+    const skiMatch = line.match(/\b([a-fA-F0-9]{40})\b/);
+    if (skiMatch) {
+        return skiMatch[1].toLowerCase();
+    }
+    return null;
+}
+
+function handleTraceMessage(ski, line, parsed) {
+    const ts = extractTimestamp(line);
+    const direction = extractDirection(line);
+    const js = extractJsonString(line);
+    
+    if (js) {
         try {
-            const res = await fetch('/api/usecases');
-            if (!res.ok) return;
-            const list = await res.json();
-            displaySupportedUsecases(list);
-        } catch (err) {
-            // ignore errors
-        }
-    }
-
-    // Load config and hide disabled usecases
-    let usecaseConfig = {};
-    async function loadConfig() {
-        try {
-            const res = await fetch('/api/config');
-            if (!res.ok) {
-                console.warn('Failed to load config, all usecases will be visible');
-                return;
-            }
-            const config = await res.json();
-            usecaseConfig = config.usecases || {};
-
-            // Hide disabled usecases by removing them from DOM
-            for (const [name, cfg] of Object.entries(usecaseConfig)) {
-                if (!cfg.enabled) {
-                    hideUsecase(name);
-                }
-            }
-        } catch (err) {
-            console.error('Error loading config:', err);
-        }
-    }
-
-    function hideUsecase(name) {
-        const n = name.toLowerCase();
-        // Find the usecase section (header + content + divider)
-        const header = document.querySelector(`.usecase-header:has(#${n}Badge)`);
-        if (!header) return;
-
-        // Hide header
-        header.style.display = 'none';
-
-        // Hide content
-        const content = document.getElementById(n + 'Content');
-        if (content) content.style.display = 'none';
-
-        // Hide the divider after (next sibling)
-        let next = content ? content.nextElementSibling : header.nextElementSibling;
-        if (next && next.tagName === 'DIV' && next.style.height === '1px') {
-            next.style.display = 'none';
-        }
-
-        console.log(`Usecase ${name} hidden by config`);
-    }
-
-    function setUsecase(name, supported) {
-        // This function is overridden below to update the display panels
-    }
-
-    // --- Parsed trace handling helpers ---
-    function extractTimestamp(line) {
-        const ts = (typeof line === 'string') ? line.slice(0, 19) : '';
-        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ts)) return ts;
-        return ''
-    }
-
-    function extractDirection(line) {
-        if (typeof line !== 'string') return '';
-        const m = line.match(/TRACE\s*(Recv|Send)/i) || line.match(/Trace\s*(Recv|Send)/i);
-        return m ? m[1].toLowerCase() : ''
-    }
-
-    function extractJsonString(line) {
-        if (typeof line !== 'string') return null;
-        const idx = line.indexOf('{');
-        if (idx === -1) return null;
-        return line.slice(idx)
-    }
-
-    function safeHasOwn(obj, key) {
-        return Object.prototype.hasOwnProperty.call(obj, key)
-    }
-
-    function findValueByKey(obj, key) {
-        if (!obj || typeof obj !== 'object') return undefined;
-        if (safeHasOwn(obj, key)) return obj[key];
-        for (const k in obj) {
-            if (!safeHasOwn(obj, k)) continue;
-            const v = obj[k];
-            if (typeof v === 'object') {
-                const found = findValueByKey(v, key);
-                if (found !== undefined) return found
-            }
-        }
-        return undefined
-    }
-
-    function findCmdType(obj) {
-        const cmd = findValueByKey(obj, 'cmd');
-        if (!cmd) return '';
-
-        function findObjInArray(a) {
-            if (!Array.isArray(a)) return null;
-            for (const item of a) {
-                if (!item) continue;
-                if (typeof item === 'object' && !Array.isArray(item)) {
-                    for (const k in item) {
-                        if (Object.prototype.hasOwnProperty.call(item, k)) return k
-                    }
-                }
-                if (Array.isArray(item)) {
-                    const deeper = findObjInArray(item);
-                    if (deeper) return deeper
-                }
-            }
-            return null
-        }
-
-        const t = findObjInArray(cmd);
-        return t || ''
-    }
-
-    const parsedTraces = [];
-    let parsedIdCounter = 1;
-
-    function addParsedTrace(entry) {
-        entry.id = parsedIdCounter++;
-        parsedTraces.unshift(entry);
-        if (parsedTraces.length > 500) parsedTraces.pop();
-        renderParsedTraces();
-    }
-
-    function clearParsedTraces() {
-        parsedTraces.length = 0;
-        renderParsedTraces();
-        const detail = document.getElementById('traceDetail');
-        if (detail) {
-            detail.textContent = 'Click an entry to view the full JSON.';
-            detail.style.display = 'none';
-        }
-        const btn = document.getElementById('traceDetailClose');
-        if (btn) btn.style.display = 'none';
-
-        // Entferne alle selektierten Listenelemente
-        try {
-            const sel = document.querySelectorAll('#parsedTracesList li.selected');
-            sel.forEach(el => el.classList.remove('selected'));
-        } catch (e) {
-        }
-        lastShownPT = null;
-    }
-
-    function renderParsedTraces() {
-        const list = document.getElementById('parsedTracesList');
-        if (!list) return;
-        list.innerHTML = '';
-        if (parsedTraces.length === 0) {
-            document.getElementById('parsedTracesStatus').textContent = 'Waiting for traces...';
-            return
-        }
-        document.getElementById('parsedTracesStatus').textContent = '';
-        // only show up to 10 visible items but keep list scrollable
-        parsedTraces.forEach(pt => {
-            const li = document.createElement('li');
-            li.id = 'pt-' + pt.id;
-            const ts = document.createElement('div');
-            ts.className = 'trace-ts';
-            ts.textContent = pt.ts || '';
-            const dir = document.createElement('div');
-            dir.className = (pt.direction === 'recv' ? 'dir-recv' : 'dir-send');
-            dir.textContent = (pt.direction || '').toUpperCase();
-            const meta = document.createElement('div');
-            meta.className = 'trace-meta';
-            meta.innerHTML = '<span style="color:var(--muted)">cmdClassifier:</span> ' + (pt.cmdClassifier || '-') + ' &nbsp; <span style="color:var(--muted)">type:</span> ' + (pt.cmdType || '-');
-            li.appendChild(ts);
-            li.appendChild(dir);
-            li.appendChild(meta);
-            li.addEventListener('click', () => showTraceDetail(pt));
-            list.appendChild(li);
-        })
-    }
-
-    /* --- Entities rendering (cascading list) --- */
-    // remember expanded state across renders: key = entityAddress + '::' + featureIndex
-    const expandedStates = {};
-
-    function renderEntities(data) {
-        const container = document.getElementById('entitiesList');
-        if (!container) return;
-        // preserve scroll and expanded state
-        const prevScroll = container ? container.scrollTop : 0;
-        const prevExpanded = Object.assign({}, expandedStates);
-        container.innerHTML = '';
-        if (!data || data.length === 0) {
-            document.getElementById('entitiesStatus').textContent = 'No entities available';
-            return;
-        }
-        document.getElementById('entitiesStatus').textContent = '';
-        data.forEach((ent, entIndex) => {
-            const li = document.createElement('li');
-            const entKey = String(ent.address || '') || ('ent-' + entIndex);
-            const toggle = document.createElement('span');
-            toggle.className = 'tree-toggle';
-            toggle.textContent = '+';
-            const title = document.createElement('span');
-            title.className = 'entity-addr';
-            title.textContent = (ent.address || '') + ' ';
-            const etype = document.createElement('span');
-            etype.style.color = 'var(--muted)';
-            etype.style.fontSize = '13px';
-            etype.textContent = (ent.entityType ? ('[' + ent.entityType + ']') : '');
-            li.appendChild(toggle);
-            li.appendChild(title);
-            li.appendChild(etype);
-
-            const sub = document.createElement('div');
-            sub.className = 'sub';
-            sub.style.display = 'none';
-            // features
-            if (Array.isArray(ent.features)) {
-                ent.features.forEach((f, featIndex) => {
-                    const fdiv = document.createElement('div');
-                    const fname = document.createElement('div');
-                    fname.style.fontWeight = '600';
-                    fname.textContent = (f.name || '');
-                    const froles = document.createElement('div');
-                    froles.style.color = 'var(--muted)';
-                    froles.textContent = 'Roles: ' + (f.roles || '');
-                    fdiv.appendChild(fname);
-                    fdiv.appendChild(froles);
-                    // operations
-                    if (Array.isArray(f.operations) && f.operations.length > 0) {
-                        const opl = document.createElement('ul');
-                        opl.style.margin = '6px 0 8px 12px';
-                        opl.style.padding = '0 0 0 14px';
-                        opl.style.listStyle = 'disc';
-                        f.operations.forEach(op => {
-                            const oli = document.createElement('li');
-                            const opKey = (op.op !== undefined && op.op !== null) ? String(op.op) : '';
-                            const opName = (op.name !== undefined && op.name !== null) ? String(op.name) : '';
-                            if (opKey && opName) {
-                                oli.textContent = opKey + ' — ' + opName;
-                            } else if (opName) {
-                                oli.textContent = opName;
-                            } else {
-                                oli.textContent = opKey;
-                            }
-                            opl.appendChild(oli);
-                        });
-                        fdiv.appendChild(opl);
-                    }
-                    // restore expanded state for this feature
-                    const featKey = entKey + '::' + String(featIndex);
-                    if (prevExpanded[featKey]) {
-                        fdiv.style.display = 'block';
-                    }
-                    sub.appendChild(fdiv);
+            const obj = JSON.parse(js);
+            const cmdClassifier = findValueByKey(obj, 'cmdClassifier') || '';
+            const cmdType = findCmdType(obj) || '';
+            
+            const traceEntry = {
+                id: 0,
+                ts: ts,
+                direction: direction,
+                cmdClassifier: cmdClassifier,
+                cmdType: cmdType,
+                rawJson: obj,
+                rawLine: line
+            };
+            
+            if (ski) {
+                addPeerTrace(ski, traceEntry);
+            } else {
+                Object.keys(peersState.peerData).forEach(peerSki => {
+                    addPeerTrace(peerSki, Object.assign({}, traceEntry));
                 });
             }
-            li.appendChild(sub);
-            // restore toggled state if any feature is expanded
-            const anyExpanded = Object.keys(prevExpanded).some(k => k.startsWith(entKey + '::'));
-            if (anyExpanded) {
-                sub.style.display = 'block';
-                toggle.textContent = '−';
-            }
+            return;
+        } catch (e) {
+        }
+    }
+    
+    if (ski) {
+        addPeerLog(ski, line);
+    }
+}
 
-            toggle.addEventListener('click', (e) => {
-                const isOpen = sub.style.display !== 'none';
-                if (isOpen) {
-                    sub.style.display = 'none';
-                    toggle.textContent = '+';
-                    // clear expanded flags for this entity
-                    Object.keys(expandedStates).forEach(k => {
-                        if (k.startsWith(entKey + '::')) delete expandedStates[k];
+// ========== PEER DATA UPDATE FUNCTIONS ==========
+
+function updatePeerUsecaseData(ski, data) {
+    if (!peersState.peerData[ski]) {
+        peersState.peerData[ski] = createPeerData(ski);
+    }
+    peersState.peerData[ski].usecaseData = data;
+    
+    const content = document.querySelector(`.peer-tab-content[data-ski="${ski}"]`);
+    if (!content) return;
+    
+    const fallback = v => (v !== undefined ? v : '-');
+    const setText = (selector, v) => {
+        const el = content.querySelector(selector);
+        if (el) el.textContent = String(fallback(v));
+    };
+    
+    // LPC
+    if (data.lpcLimitValue !== undefined) {
+        setText('.lpc-limit-value', data.lpcLimitValue);
+        setText('.lpc-limit-dur', data.lpcLimitDurSeconds);
+        setText('.lpc-limit-active', data.lpcLimitActive);
+        setText('.lpc-failsafe-power', data.lpcFailsafePower);
+        setText('.lpc-failsafe-duration', data.lpcFailsafeDurMinutes);
+        setText('.lpc-max-nominal-power', data.lpcConsumptionLimitNominalMax);
+        setText('.lpc-heartbeat', data.lpcHeartbeatOk);
+        setText('.lpc-heartbeat-timestamp', data.lpcHeartbeatTimestamp);
+    }
+    
+    // LPP
+    if (data.lppLimitValue !== undefined) {
+        setText('.lpp-limit-value', data.lppLimitValue);
+        setText('.lpp-limit-dur', data.lppLimitDurationSeconds);
+        setText('.lpp-limit-active', data.lppLimitActive ? 'yes' : 'no');
+        setText('.lpp-failsafe-value', data.lppFailsafeValue);
+        setText('.lpp-failsafe-dur', data.lppFailsafeDurMinutes);
+        setText('.lpp-heartbeat', data.lppHeartbeatOk);
+        setText('.lpp-heartbeat-timestamp', data.lppHeartbeatTimestamp);
+    }
+    
+    // EVSECC
+    if (data.evseccManufacturerData) {
+        updateManufacturerDisplay(content.querySelector('.evsecc-manufacturer'), data.evseccManufacturerData);
+        setText('.evsecc-operating-state', data.evseccOperatingState);
+        setText('.evsecc-error-message', data.evseccOperatingStateDescription);
+    }
+    
+    // EVCC
+    if (data.evccManufacturerData !== undefined) {
+        updateManufacturerDisplay(content.querySelector('.evcc-manufacturer'), data.evccManufacturerData);
+        setText('.evcc-ev-connected', data.evccEvConnected);
+        setText('.evcc-comm-standard', data.evccCommunicationStandard);
+        setText('.evcc-asymmetric-charging', data.evccAsymmetricChargingSupport);
+        setText('.evcc-charging-limits-min', data.evccLimitMinimum);
+        setText('.evcc-charging-limits-max', data.evccLimitMaximum);
+        setText('.evcc-charging-limits-standby', data.evccLimitStandby);
+        setText('.evcc-sleep-mode', data.evccSleepMode);
+        if (data.evccIdentifications && data.evccIdentifications.length > 0) {
+            setText('.evcc-identification-type', data.evccIdentifications[0].ValueType);
+            setText('.evcc-identification-value', data.evccIdentifications[0].Value);
+        }
+    }
+    
+    // EVCEM
+    if (data.evcemCurrentPerPhase !== undefined) {
+        setText('.evcem-charging-current', formatPhaseArray(data.evcemCurrentPerPhase, 'A'));
+        setText('.evcem-charging-power', formatPhaseArray(data.evcemPowerPerPhase, 'W'));
+        setText('.evcem-charged-energy', data.evcemEnergyCharged);
+    }
+    
+    // OPEV
+    if (data.opevLoadControlLimit !== undefined) {
+        setText('.opev-load-limit', formatLoadLimits(data.opevLoadControlLimit));
+        setText('.opev-current-limit-min', formatPhaseArray(data.opevCurrentLimitMin, 'A'));
+        setText('.opev-current-limit-max', formatPhaseArray(data.opevCurrentLimitMax, 'A'));
+        setText('.opev-current-limit-default', formatPhaseArray(data.opevCurrentLimitDefault, 'A'));
+    }
+    
+    // OSCEV
+    if (data.oscevLoadControlLimit !== undefined) {
+        setText('.oscev-load-limit', formatLoadLimits(data.oscevLoadControlLimit));
+        setText('.oscev-current-limit-min', formatPhaseArray(data.oscevCurrentLimitMin, 'A'));
+        setText('.oscev-current-limit-max', formatPhaseArray(data.oscevCurrentLimitMax, 'A'));
+        setText('.oscev-current-limit-default', formatPhaseArray(data.oscevCurrentLimitDefault, 'A'));
+    }
+    
+    // EVSOC
+    if (data.evsocStateOfCharge !== undefined) {
+        setText('.evsoc-state-of-charge', data.evsocStateOfCharge.toFixed(1));
+    }
+    
+    // CEVC
+    if (data.cevcChargeStrategy !== undefined) {
+        setText('.cevc-charge-strategy', data.cevcChargeStrategy);
+        if (data.cevcEnergyDemand) {
+            setText('.cevc-min-demand', data.cevcEnergyDemand.MinDemand);
+            setText('.cevc-opt-demand', data.cevcEnergyDemand.OptDemand);
+            setText('.cevc-max-demand', data.cevcEnergyDemand.MaxDemand);
+            setText('.cevc-duration-start', data.cevcEnergyDemand.DurationUntilStart);
+            setText('.cevc-duration-end', data.cevcEnergyDemand.DurationUntilEnd);
+        }
+        if (data.cevcChargePlan && data.cevcChargePlan.Slots) {
+            const planText = data.cevcChargePlan.Slots.map((slot, i) => {
+                return 'Slot ' + (i + 1) + ': ' + slot.Start + 's - ' + slot.End + 's | Power: ' + slot.MinPower + 'W - ' + slot.MaxPower + 'W | Energy: ' + slot.MinEnergy + 'Wh - ' + slot.MaxEnergy + 'Wh';
+            }).join('\n');
+            setText('.cevc-charge-plan', planText || '-');
+        }
+    }
+    
+    // MPC
+    if (data.mpcPower !== undefined) {
+        setText('.mpc-power', data.mpcPower);
+        setText('.mpc-power-per-phase', formatPhaseArray(data.mpcPowerPerPhase, 'W'));
+        setText('.mpc-current-per-phase', formatPhaseArray(data.mpcCurrentPerPhase, 'A'));
+        setText('.mpc-voltage-per-phase', formatPhaseArray(data.mpcVoltagePerPhase, 'V'));
+        setText('.mpc-frequency', data.mpcFrequency);
+        setText('.mpc-energy-consumed', data.mpcEnergyConsumed);
+        setText('.mpc-energy-produced', data.mpcEnergyProduced);
+    }
+    
+    // MGCP
+    if (data.mgcPower !== undefined) {
+        setText('.mgcp-power', data.mgcPower);
+        setText('.mgcp-power-limitation-factor', data.mgcPowerLimitationFactor);
+        setText('.mgcp-current-per-phase', formatPhaseArray(data.mgcCurrentPerPhase, 'A'));
+        setText('.mgcp-voltage-per-phase', formatPhaseArray(data.mgcVoltagePerPhase, 'V'));
+        setText('.mgcp-frequency', data.mgcFrequency);
+        setText('.mgcp-energy-feed-in', data.mgcEnergyFeedIn);
+        setText('.mgcp-energy-consumed', data.mgcEnergyConsumed);
+    }
+    
+    if (data.usecaseSupport) {
+        Object.entries(data.usecaseSupport).forEach(([name, supported]) => {
+            updatePeerUsecaseDisplay(ski, name, supported);
+        });
+    }
+}
+
+function updatePeerUsecaseDisplay(ski, name, supported) {
+    const content = document.querySelector(`.peer-tab-content[data-ski="${ski}"]`);
+    if (!content) return;
+    
+    const n = name.toLowerCase();
+    const badge = content.querySelector('.' + n + '-badge');
+    const contentDiv = content.querySelector('.' + n + '-content');
+    
+    if (badge) {
+        badge.textContent = supported ? 'supported' : 'not supported';
+        badge.classList.remove('supported', 'unsupported');
+        badge.classList.add(supported ? 'supported' : 'unsupported');
+    }
+    if (contentDiv) {
+        if (supported) {
+            contentDiv.classList.remove('disabled');
+        } else {
+            contentDiv.classList.add('disabled');
+        }
+    }
+}
+
+function updatePeerEntities(ski, entities) {
+    if (!peersState.peerData[ski]) {
+        peersState.peerData[ski] = createPeerData(ski);
+    }
+    peersState.peerData[ski].entities = entities;
+    
+    const content = document.querySelector(`.peer-tab-content[data-ski="${ski}"]`);
+    if (!content) return;
+    
+    const container = content.querySelector('.entities-list');
+    const statusEl = content.querySelector('.entities-status');
+    const expandedStates = peersState.peerData[ski].expandedStates;
+    
+    if (!entities || entities.length === 0) {
+        statusEl.textContent = 'No entities available';
+        container.innerHTML = '';
+        return;
+    }
+    
+    statusEl.textContent = entities.length + ' entity(s)';
+    
+    const prevScroll = container.scrollTop;
+    
+    container.innerHTML = '';
+    entities.forEach((ent, entIndex) => {
+        const li = document.createElement('li');
+        li.style.cssText = 'padding:8px;border-bottom:1px solid #f1f5f9';
+        
+        const entKey = String(ent.address || '') || ('ent-' + entIndex);
+        const toggle = document.createElement('span');
+        toggle.className = 'tree-toggle';
+        toggle.textContent = '+';
+        toggle.style.cssText = 'display:inline-block;width:18px;text-align:center;color:var(--muted)';
+        
+        const title = document.createElement('span');
+        title.className = 'entity-addr';
+        title.style.fontWeight = '600';
+        title.textContent = (ent.address || '') + ' ';
+        
+        const etype = document.createElement('span');
+        etype.style.cssText = 'color:var(--muted);font-size:13px';
+        etype.textContent = (ent.entityType ? ('[' + ent.entityType + ']') : '');
+        
+        li.appendChild(toggle);
+        li.appendChild(title);
+        li.appendChild(etype);
+        
+        const sub = document.createElement('div');
+        sub.className = 'sub';
+        sub.style.cssText = 'margin-left:12px;font-size:13px;color:#333;display:none';
+        
+        if (Array.isArray(ent.features)) {
+            ent.features.forEach((f, featIndex) => {
+                const fdiv = document.createElement('div');
+                const fname = document.createElement('div');
+                fname.style.fontWeight = '600';
+                fname.textContent = (f.name || '');
+                const froles = document.createElement('div');
+                froles.style.color = 'var(--muted)';
+                froles.textContent = 'Roles: ' + (f.roles || '');
+                fdiv.appendChild(fname);
+                fdiv.appendChild(froles);
+                
+                if (Array.isArray(f.operations) && f.operations.length > 0) {
+                    const opl = document.createElement('ul');
+                    opl.style.cssText = 'margin:6px 0 8px 12px;padding:0 0 0 14px;list-style:disc';
+                    f.operations.forEach(op => {
+                        const oli = document.createElement('li');
+                        const opKey = String(op.op || '');
+                        const opName = String(op.name || '');
+                        oli.textContent = opKey && opName ? opKey + ' - ' + opName : (opName || opKey);
+                        opl.appendChild(oli);
                     });
-                } else {
-                    sub.style.display = 'block';
-                    toggle.textContent = '−';
-                    // mark all child features as expanded
-                    const featCount = (Array.isArray(ent.features) ? ent.features.length : 0);
-                    for (let i = 0; i < featCount; i++) {
-                        expandedStates[entKey + '::' + i] = true;
-                    }
+                    fdiv.appendChild(opl);
                 }
+                
+                const featKey = entKey + '::' + featIndex;
+                if (expandedStates[featKey]) {
+                    fdiv.style.display = 'block';
+                }
+                sub.appendChild(fdiv);
             });
-            // clicking title toggles as well
-            title.addEventListener('click', () => {
-                toggle.click();
-            });
-            container.appendChild(li);
-        });
-        // restore scroll position
-        try {
-            container.scrollTop = prevScroll;
-        } catch (e) {
         }
-    }
-
-    // load entities from API (initial)
-    async function loadEntities() {
-        try {
-            const res = await fetch('/api/entities');
-            if (!res.ok) {
-                document.getElementById('entitiesStatus').textContent = 'Failed to load entities';
-                return;
-            }
-            const data = await res.json();
-            // server may respond with array or with {type:..., entities: [...]}
-            let arr = [];
-            if (Array.isArray(data)) arr = data;
-            else if (data && Array.isArray(data.entities)) arr = data.entities;
-            renderEntities(arr);
-        } catch (e) {
-            document.getElementById('entitiesStatus').textContent = 'Error loading entities: ' + e
+        
+        li.appendChild(sub);
+        
+        const anyExpanded = Object.keys(expandedStates).some(k => k.startsWith(entKey + '::'));
+        if (anyExpanded) {
+            sub.style.display = 'block';
+            toggle.textContent = '-';
         }
-    }
-
-    // --- Trace detail helpers ---
-    function eebusJsonToJson(jsonStr) {
-        if (typeof jsonStr !== 'string') jsonStr = String(jsonStr || '');
-        try {
-            let s = jsonStr;
-            // Apply the simple transformations from the C++ routine
-            s = s.replace(/\[\]/g, '{}');
-            s = s.replace(/\}\]/g, '}');
-            s = s.replace(/\},\{/g, ',');
-            s = s.replace(/\[\{/g, '{');
-            s = s.trim();
-
-            // Try to parse the transformed string; if successful, pretty-print
-            try {
-                const parsed = JSON.parse(s);
-                return JSON.stringify(parsed, null, 2);
-            } catch (_) {
-                // Fallback: simple pretty printer for single-line JSON-like strings
-                return simplePretty(s);
-            }
-        } catch (e) {
-            return jsonStr;
-        }
-    }
-
-    function simplePretty(s) {
-        // Basic character-wise pretty printer that inserts newlines and indentation
-        let out = '';
-        let indent = 0;
-        const indentStr = () => '  '.repeat(indent);
-        for (let i = 0; i < s.length; i++) {
-            const ch = s[i];
-            if (ch === '{' || ch === '[') {
-                out += ch + '\n';
-                indent++;
-                out += indentStr();
-            } else if (ch === '}' || ch === ']') {
-                out += '\n';
-                indent = Math.max(0, indent - 1);
-                out += indentStr() + ch;
-            } else if (ch === ',') {
-                out += ch + '\n' + indentStr();
+        
+        toggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const isOpen = sub.style.display !== 'none';
+            if (isOpen) {
+                sub.style.display = 'none';
+                toggle.textContent = '+';
+                Object.keys(expandedStates).forEach(k => {
+                    if (k.startsWith(entKey + '::')) delete expandedStates[k];
+                });
             } else {
-                out += ch;
+                sub.style.display = 'block';
+                toggle.textContent = '-';
+                const featCount = (Array.isArray(ent.features) ? ent.features.length : 0);
+                for (let i = 0; i < featCount; i++) {
+                    expandedStates[entKey + '::' + i] = true;
+                }
             }
-        }
-        return out;
-    }
-
-    let lastShownPT = null;
-
-    function showTraceDetail(pt) {
-        // entferne vorherige Markierung
-        const prev = lastShownPT;
-        if (prev && prev.id) {
-            const prevEl = document.getElementById('pt-' + prev.id);
-            if (prevEl) prevEl.classList.remove('selected');
-        }
-
-        // setze neuen selection state
-        lastShownPT = pt;
-        const li = document.getElementById('pt-' + pt.id);
-        if (li) {
-            li.classList.add('selected');
-            try {
-                li.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'nearest'});
-            } catch (e) {
-            }
-        }
-
-        // existing detail rendering (unverändert; nur in Funktion erhalten)
-        const detail = document.getElementById('traceDetail');
-        try {
-            const isRaw = document.getElementById('eebusJsonCheckbox') && document.getElementById('eebusJsonCheckbox').checked;
-            let text = '';
-            if (pt.rawJson) {
-                const s = JSON.stringify(pt.rawJson);
-                text = isRaw ? JSON.stringify(pt.rawJson, null, 2) : eebusJsonToJson(s);
-            } else {
-                text = pt.rawLine || '';
-            }
-            detail.textContent = text;
-        } catch (e) {
-            detail.textContent = pt.rawLine || '';
-        }
-        detail.style.display = 'block';
-        const closeBtn = document.getElementById('traceDetailClose');
-        if (closeBtn) closeBtn.style.display = 'inline-block';
-        detail.scrollTop = 0;
-
-        // scroll the detail panel into view so user clearly sees the detail area
-        const panel = document.getElementById('traceDetailPanel');
-        if (panel) {
-            try {
-                panel.scrollIntoView({behavior: 'smooth', block: 'start'});
-            } catch (e) {
-            }
-        }
-    }
-
-    // Update displayed detail when checkbox changes
-    const eebusCheckbox = document.getElementById('eebusJsonCheckbox');
-    if (eebusCheckbox) {
-        eebusCheckbox.addEventListener('change', () => {
-            if (lastShownPT) showTraceDetail(lastShownPT);
         });
-    }
-
-    const traceDetailCloseBtn = document.getElementById('traceDetailClose');
-    if (traceDetailCloseBtn) {
-        traceDetailCloseBtn.addEventListener('click', function () {
-            const detail = document.getElementById('traceDetail');
-            if (detail) detail.style.display = 'none';
-            this.style.display = 'none';
-        });
-    }
-
-    const clearParsedBtn = document.getElementById('clearParsed');
-    if (clearParsedBtn) {
-        clearParsedBtn.addEventListener('click', clearParsedTraces);
-    }
-
-    // WebSocket for logs and usecase updates
-    (function () {
-        const logsEl = document.getElementById('logs');
-        const logsBtn = document.getElementById('logsToBottomBtn');
-        const protocol = (location.protocol === 'https:') ? 'wss:' : 'ws:';
-        const wsUrl = protocol + '//' + location.host + '/ws/logs';
-        let ws;
-        // auto-scroll state: true means keep scrolling to newest messages
-        let logsAutoScroll = true;
-
-        function updateLogsButton() {
-            if (!logsBtn) return;
-            logsBtn.style.display = logsAutoScroll ? 'none' : 'inline-block';
-        }
-
-        // clicking the button forces scroll to bottom and re-enables auto-scroll
-        if (logsBtn) {
-            logsBtn.addEventListener('click', () => {
-                logsAutoScroll = true;
-                try {
-                    logsEl.scrollTop = logsEl.scrollHeight;
-                } catch (e) {
-                }
-                updateLogsButton();
-            });
-        }
-
-        // detect user scroll - if user scrolls up, disable auto-scroll; if they scroll to bottom, enable it
-        if (logsEl) {
-            logsEl.addEventListener('scroll', () => {
-                const atBottom = (logsEl.scrollHeight - logsEl.scrollTop - logsEl.clientHeight) <= 8;
-                logsAutoScroll = atBottom;
-                updateLogsButton();
-            });
-        }
-
-        function connect() {
-            ws = new WebSocket(wsUrl);
-            ws.addEventListener('open', () => {
-                if (logsEl) logsEl.textContent = ''
-            });
-            ws.addEventListener('message', (ev) => {
-                const line = (typeof ev.data === 'string') ? ev.data : JSON.stringify(ev.data);
-                // First try: is this a structured usecase JSON message we previously used?
-                let parsed = null;
-                try {
-                    parsed = JSON.parse(line)
-                } catch (e) {
-                    parsed = null
-                }
-                if (parsed && parsed.type === 'usecase') {
-                    const name = parsed.name;
-                    const supported = !!parsed.supported;
-                    setUsecase(name, supported);
-                    return;
-                }
-                if (parsed && parsed.type === 'entities') {
-                    const arr = parsed.entities || [];
-                    renderEntities(arr);
-                    return;
-                }
-
-                // Detect TRACE Send/Recv lines and try to parse JSON inside them
-                const isTrace = (typeof line === 'string') && (/TRACE\s*(Recv|Send)/i.test(line) || /Trace\s*(Recv|Send)/i.test(line));
-                if (isTrace) {
-                    const ts = extractTimestamp(line);
-                    const direction = extractDirection(line);
-                    const js = extractJsonString(line);
-                    if (js) {
-                        try {
-                            const obj = JSON.parse(js);
-                            const cmdClassifier = findValueByKey(obj, 'cmdClassifier') || '';
-                            const cmdType = findCmdType(obj) || '';
-                            addParsedTrace({
-                                ts: ts,
-                                direction: direction,
-                                cmdClassifier: cmdClassifier,
-                                cmdType: cmdType,
-                                rawJson: obj,
-                                rawLine: line
-                            });
-                            return
-                        } catch (e) { /* fallthrough to log */
-                        }
-                    }
-                }
-
-                // fallback: treat as plain log line
-                if (logsEl) {
-                    if (logsEl.textContent && logsEl.textContent.length > 0) {
-                        logsEl.textContent += '\n' + line
-                    } else {
-                        logsEl.textContent = line
-                    }
-                }
-                // only auto-scroll when enabled
-                if (logsAutoScroll && logsEl) {
-                    try {
-                        logsEl.scrollTop = logsEl.scrollHeight;
-                    } catch (e) {
-                    }
-                }
-            });
-            ws.addEventListener('close', () => {
-                setTimeout(connect, 1000)
-            });
-            ws.addEventListener('error', (e) => {
-                console.error('ws error', e);
-                try {
-                    ws.close()
-                } catch (_) {
-                }
-            });
-        }
-
-        connect();
-    })();
-
-    // Build API payloads for new endpoints
-    async function apiWrite(payload) {
-        try {
-            const res = await fetch('/api/write', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            const txt = await res.text();
-            if (!res.ok) {
-                alert('Write failed: ' + txt)
-            }
-        } catch (err) {
-            alert('Request failed: ' + err)
-        }
-    }
-
-    // wire up control buttons and polling of usecaseData
-    document.addEventListener('DOMContentLoaded', () => {
-        // sanitize duration inputs to integers where required
-        intInputSanitize(document.getElementById('writeLimitDurationSec'));
-        intInputSanitize(document.getElementById('writeFailsafeDurationMin'));
-        intInputSanitize(document.getElementById('writeLPPLimitDurationSec'));
-        intInputSanitize(document.getElementById('writeLPPFailsafeDurationMin'));
-
-        const sendWriteLimitBtn = document.getElementById('sendWriteLimit');
-        if (sendWriteLimitBtn) {
-            sendWriteLimitBtn.addEventListener('click', () => {
-                const val = parseFloat((document.getElementById('writeLimitValue') || {}).value) || 0;
-                const dur = parseInt((document.getElementById('writeLimitDurationSec') || {}).value, 10) || 0;
-                const active = !!(document.getElementById('writeLimitActive') && document.getElementById('writeLimitActive').checked);
-                apiWrite({cmd: 'writeLPCConsumptionLimit', durationSeconds: dur, value: val, isActive: active});
-            });
-        }
-
-        const sendFailsafePower = document.getElementById('sendWriteFailsafePower');
-        if (sendFailsafePower) {
-            sendFailsafePower.addEventListener('click', () => {
-                const p = parseFloat((document.getElementById('writeFailsafePower') || {}).value) || 0;
-                apiWrite({cmd: 'writeLPCFailsafeValue', failsafePower: p});
-            });
-        }
-
-        const sendFailsafeDur = document.getElementById('sendWriteFailsafeDuration');
-        if (sendFailsafeDur) {
-            sendFailsafeDur.addEventListener('click', () => {
-                const m = parseInt((document.getElementById('writeFailsafeDurationMin') || {}).value, 10) || 0;
-                apiWrite({cmd: 'writeLPCFailsafeDuration', durationMinutes: m});
-            });
-        }
-
-        const sendWriteLPPLimitBtn = document.getElementById('sendWriteLPPLimit');
-        if (sendWriteLPPLimitBtn) {
-            sendWriteLPPLimitBtn.addEventListener('click', () => {
-                const val = parseFloat((document.getElementById('writeLPPLimitValue') || {}).value) || 0;
-                const dur = parseInt((document.getElementById('writeLPPLimitDurationSec') || {}).value, 10) || 0;
-                const active = !!(document.getElementById('writeLPPLimitActive') && document.getElementById('writeLPPLimitActive').checked);
-                apiWrite({cmd: 'writeLPPProductionLimit', durationSeconds: dur, value: val, isActive: active});
-            });
-        }
-
-        const sendLPPFailsafePower = document.getElementById('sendWriteLPPFailsafePower');
-        if (sendLPPFailsafePower) {
-            sendLPPFailsafePower.addEventListener('click', () => {
-                const p = parseFloat((document.getElementById('writeLPPFailsafePower') || {}).value) || 0;
-                apiWrite({cmd: 'writeLPPFailsafeValue', failsafePower: p});
-            });
-        }
-
-        const sendLPPFailsafeDur = document.getElementById('sendWriteLPPFailsafeDuration');
-        if (sendLPPFailsafeDur) {
-            sendLPPFailsafeDur.addEventListener('click', () => {
-                const m = parseInt((document.getElementById('writeLPPFailsafeDurationMin') || {}).value, 10) || 0;
-                apiWrite({cmd: 'writeLPPFailsafeDuration', durationMinutes: m});
-            });
-        }
-
-        // OSCEV write handlers
-        const sendWriteOscevLimitBtn = document.getElementById('sendWriteOscevLimit');
-        if (sendWriteOscevLimitBtn) {
-            sendWriteOscevLimitBtn.addEventListener('click', () => {
-                const val = parseFloat((document.getElementById('writeOscevLimitValue') || {}).value) || 0;
-                const active = !!(document.getElementById('writeOscevLimitActive') && document.getElementById('writeOscevLimitActive').checked);
-                apiWrite({cmd: 'writeOSCEVLoadControlLimits', value: val, isActive: active});
-            });
-        }
-
-        // OPEV write handlers
-        const sendWriteOpevLimitBtn = document.getElementById('sendWriteOpevLimit');
-        if (sendWriteOpevLimitBtn) {
-            sendWriteOpevLimitBtn.addEventListener('click', () => {
-                const val = parseFloat((document.getElementById('writeOpevLimitValue') || {}).value) || 0;
-                const active = !!(document.getElementById('writeOpevLimitActive') && document.getElementById('writeOpevLimitActive').checked);
-                apiWrite({cmd: 'writeOPEVLoadControlLimits', value: val, isActive: active});
-            });
-        }
-
-        // initial poll
-        loadConfig(); // Load config first to hide disabled usecases
-        fetchUsecaseData();
-        loadUsecases();
-        loadEntities();
-
-        // poll periodically for usecaseData so frontend shows latest values
-        setInterval(fetchUsecaseData, 2000);
+        
+        title.addEventListener('click', () => toggle.click());
+        
+        container.appendChild(li);
     });
+    
+    container.scrollTop = prevScroll;
+}
 
-    async function fetchUsecaseData() {
-        try {
-            const res = await fetch('/api/usecasedata');
-            if (!res.ok) return;
-            const d = await res.json();
-            /*
-            // update LPC
-           const lpcVal = (d.lpcLimitValue !== undefined) ? d.lpcLimitValue : '-';
-            document.getElementById('lpcLimitValue').textContent = lpcVal;
-            document.getElementById('lpcLimitDur').textContent = (d.lpcLimitDurationSec !== undefined) ? d.lpcLimitDurationSec : '-';
-            document.getElementById('lpcLimitActive').textContent = (d.lpcLimitActive !== undefined) ? (d.lpcLimitActive ? 'yes' : 'no') : '-';
-            document.getElementById('failsafePower').textContent = (d.lpcFailsafePower !== undefined) ? d.lpcFailsafePower : '-';
-            document.getElementById('failsafeDuration').textContent = (d.lpcFailsafeDurationMin !== undefined) ? d.lpcFailsafeDurationMin : '-';
-            // update LPP explicit fields only when supported
-            if (lppSupported) {
-                const setText = (id, v) => {
-                    const el = document.getElementById(id);
-                    if (el) el.textContent = (v !== undefined ? v : '-');
-                };
-                setText('lppFailsafeValue', d.lppFailsafeValue);
-                setText('lppFailsafeDur', d.lppFailsafeDurationSec);
-                setText('lppLimitValue', d.lppLimitValue);
-                setText('lppLimitDur', d.lppLimitDurationSec);
-                setText('lppLimitActive', (d.lppLimitActive !== undefined) ? (d.lppLimitActive ? 'yes' : 'no') : '-');
-            }*/
-        } catch (e) {
-            // ignore
-        }
+function addPeerTrace(ski, traceEntry) {
+    if (!peersState.peerData[ski]) {
+        peersState.peerData[ski] = createPeerData(ski);
+    }
+    
+    const peerData = peersState.peerData[ski];
+    traceEntry.id = peerData.traceIdCounter++;
+    peerData.traces.unshift(traceEntry);
+    if (peerData.traces.length > 500) peerData.traces.pop();
+    
+    const content = document.querySelector(`.peer-tab-content[data-ski="${ski}"]`);
+    if (!content) return;
+    
+    const list = content.querySelector('.parsed-traces-list');
+    const statusEl = content.querySelector('.parsed-traces-status');
+    
+    statusEl.textContent = '';
+    
+    const li = document.createElement('li');
+    li.style.cssText = 'padding:6px 8px;margin:4px 0;border-radius:6px;display:flex;gap:8px;align-items:center;cursor:pointer;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,0.02) inset;font-size:13px;line-height:18px';
+    li.dataset.id = traceEntry.id;
+    
+    const ts = document.createElement('div');
+    ts.className = 'trace-ts';
+    ts.textContent = traceEntry.ts || '';
+    
+    const dir = document.createElement('div');
+    dir.className = traceEntry.direction === 'recv' ? 'dir-recv' : 'dir-send';
+    dir.textContent = (traceEntry.direction || '').toUpperCase();
+    
+    const meta = document.createElement('div');
+    meta.style.cssText = 'display:flex;gap:10px;align-items:center;font-size:13px;color:#111';
+    meta.innerHTML = '<span style="color:var(--muted)">cmdClassifier:</span> ' + (traceEntry.cmdClassifier || '-') + ' &nbsp; <span style="color:var(--muted)">type:</span> ' + (traceEntry.cmdType || '-');
+    
+    li.appendChild(ts);
+    li.appendChild(dir);
+    li.appendChild(meta);
+    
+    li.addEventListener('click', () => showPeerTraceDetail(ski, traceEntry));
+    
+    list.insertBefore(li, list.firstChild);
+    
+    while (list.children.length > 100) {
+        list.removeChild(list.lastChild);
+    }
+}
+
+function showPeerTraceDetail(ski, traceEntry) {
+    const content = document.querySelector(`.peer-tab-content[data-ski="${ski}"]`);
+    if (!content) return;
+    
+    const peerData = peersState.peerData[ski];
+    
+    if (peerData.lastShownTrace) {
+        const prevEl = content.querySelector('li[data-id="' + peerData.lastShownTrace.id + '"]');
+        if (prevEl) prevEl.classList.remove('selected');
+    }
+    
+    peerData.lastShownTrace = traceEntry;
+    
+    const li = content.querySelector('li[data-id="' + traceEntry.id + '"]');
+    if (li) {
+        li.classList.add('selected');
+        li.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+    }
+    
+    updateTraceDetailContent(content, traceEntry);
+}
+
+function updateTraceDetailContent(content, traceEntry) {
+    if (!content || !traceEntry) return;
+
+    const detail = content.querySelector('.trace-detail');
+    const checkbox = content.querySelector('.eebus-json-checkbox');
+    const isRaw = checkbox && checkbox.checked;
+
+    let text = '';
+    if (traceEntry.rawJson) {
+        text = isRaw ? JSON.stringify(traceEntry.rawJson, null, 2) : eebusJsonToJson(JSON.stringify(traceEntry.rawJson));
+    } else {
+        text = traceEntry.rawLine || '';
     }
 
+    detail.textContent = text;
+    detail.style.display = 'block';
 
-    // display flags for features
-    let lppSupported = false, lpcSupported = false, evseccSupported = false, evccSupported = false,
-        evcemSupported = false, opevSupported = false, oscevSupported = false, evsocSupported = false,
-        cevcSupported = false, mpcSupported = false, mgcpSupported = false;
+    const closeBtn = content.querySelector('.trace-detail-close');
+    if (closeBtn) closeBtn.style.display = 'inline-block';
+}
 
-    // Generic function to update usecase display using new Badge/Content pattern
-    function updateUsecaseDisplay(name, supported) {
-        const badge = document.getElementById(name + 'Badge');
-        const content = document.getElementById(name + 'Content');
-        if (badge) {
-            badge.textContent = supported ? 'supported' : 'not supported';
-            badge.className = 'support-badge ' + (supported ? 'supported' : 'unsupported');
+function addPeerLog(ski, line) {
+    if (!peersState.peerData[ski]) {
+        peersState.peerData[ski] = createPeerData(ski);
+    }
+    
+    const peerData = peersState.peerData[ski];
+    peerData.logs.push(line);
+    if (peerData.logs.length > 1000) peerData.logs.shift();
+    
+    const content = document.querySelector(`.peer-tab-content[data-ski="${ski}"]`);
+    if (!content) return;
+    
+    const logsEl = content.querySelector('.peer-logs');
+    const logsBtn = content.querySelector('.logs-to-bottom-btn');
+    
+    if (logsEl.textContent === 'Waiting for logs...') {
+        logsEl.textContent = line;
+    } else {
+        logsEl.textContent += '\n' + line;
+    }
+    
+    if (peerData.logsAutoScroll) {
+        logsEl.scrollTop = logsEl.scrollHeight;
+    } else {
+        logsBtn.style.display = 'inline-block';
+    }
+}
+
+function clearPeerTraces(ski) {
+    if (peersState.peerData[ski]) {
+        peersState.peerData[ski].traces = [];
+        peersState.peerData[ski].lastShownTrace = null;
+    }
+    
+    const content = document.querySelector(`.peer-tab-content[data-ski="${ski}"]`);
+    if (!content) return;
+    
+    content.querySelector('.parsed-traces-list').innerHTML = '';
+    content.querySelector('.parsed-traces-status').textContent = 'Waiting for spine messages...';
+    
+    const detail = content.querySelector('.trace-detail');
+    detail.style.display = 'none';
+    detail.textContent = 'Click an entry to view the full JSON.';
+    
+    const closeBtn = content.querySelector('.trace-detail-close');
+    if (closeBtn) closeBtn.style.display = 'none';
+}
+
+// ========== HELPER FUNCTIONS ==========
+
+function formatLoadLimits(limits) {
+    if (!limits || !Array.isArray(limits) || limits.length === 0) return '-';
+    return limits.map(l => {
+        const phase = l.Phase !== undefined ? 'P' + l.Phase : '';
+        const val = l.Value !== undefined ? l.Value : '-';
+        const active = l.IsActive ? ' (active)' : ' (inactive)';
+        return phase + ': ' + val + 'A' + active;
+    }).join(', ');
+}
+
+function formatPhaseArray(arr, unit) {
+    if (!arr || !Array.isArray(arr) || arr.length === 0) return '-';
+    return arr.map((v, i) => 'P' + (i + 1) + ': ' + v + unit).join(', ');
+}
+
+function updateManufacturerDisplay(el, data) {
+    if (!el || !data) return;
+    el.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:12px">' +
+        '<div><div style="font-size:12px;color:var(--muted)">Device</div><div style="font-weight:600">' + (data.DeviceName || '-') + '</div></div>' +
+        '<div><div style="font-size:12px;color:var(--muted)">Code</div><div style="font-weight:600">' + (data.DeviceCode || '-') + '</div></div>' +
+        '<div><div style="font-size:12px;color:var(--muted)">Serial</div><div style="font-weight:600">' + (data.SerialNumber || '-') + '</div></div>' +
+        '<div><div style="font-size:12px;color:var(--muted)">SW</div><div style="font-weight:600">' + (data.SoftwareRevision || '-') + '</div></div>' +
+        '<div><div style="font-size:12px;color:var(--muted)">HW</div><div style="font-weight:600">' + (data.HardwareRevision || '-') + '</div></div>' +
+        '<div><div style="font-size:12px;color:var(--muted)">Vendor</div><div style="font-weight:600">' + (data.VendorName || '-') + '</div></div>' +
+        '</div>';
+}
+
+// ========== TRACE PARSING HELPERS ==========
+
+function extractTimestamp(line) {
+    const ts = (typeof line === 'string') ? line.slice(0, 19) : '';
+    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(ts)) return ts;
+    return '';
+}
+
+function extractDirection(line) {
+    if (typeof line !== 'string') return '';
+    // Match TRACE/Trace followed by SKI (40 hex chars) followed by Recv/Send
+    const m = line.match(/TRACE\s+[a-fA-F0-9]{40}\s+(Recv|Send)/i) || line.match(/Trace\s+[a-fA-F0-9]{40}\s+(Recv|Send)/i);
+    return m ? m[1].toLowerCase() : '';
+}
+
+function extractJsonString(line) {
+    if (typeof line !== 'string') return null;
+    const idx = line.indexOf('{');
+    if (idx === -1) return null;
+    return line.slice(idx);
+}
+
+function findValueByKey(obj, key) {
+    if (!obj || typeof obj !== 'object') return undefined;
+    if (Object.prototype.hasOwnProperty.call(obj, key)) return obj[key];
+    for (const k in obj) {
+        if (!Object.prototype.hasOwnProperty.call(obj, k)) continue;
+        const v = obj[k];
+        if (typeof v === 'object') {
+            const found = findValueByKey(v, key);
+            if (found !== undefined) return found;
         }
-        if (content) {
-            if (supported) {
-                content.classList.remove('disabled');
-            } else {
-                content.classList.add('disabled');
+    }
+    return undefined;
+}
+
+function findCmdType(obj) {
+    const cmd = findValueByKey(obj, 'cmd');
+    if (!cmd) return '';
+    
+    function findObjInArray(a) {
+        if (!Array.isArray(a)) return null;
+        for (const item of a) {
+            if (!item) continue;
+            if (typeof item === 'object' && !Array.isArray(item)) {
+                for (const k in item) {
+                    if (Object.prototype.hasOwnProperty.call(item, k)) return k;
+                }
+            }
+            if (Array.isArray(item)) {
+                const deeper = findObjInArray(item);
+                if (deeper) return deeper;
             }
         }
+        return null;
     }
+    
+    const t = findObjInArray(cmd);
+    return t || '';
+}
 
-    const originalSetUsecase = setUsecase;
-    setUsecase = function (name, supported) {
-        originalSetUsecase(name, supported);
+function eebusJsonToJson(jsonStr) {
+    if (typeof jsonStr !== 'string') jsonStr = String(jsonStr || '');
+    try {
+        let s = jsonStr;
+        s = s.replace(/\[\]/g, '{}');
+        s = s.replace(/\}\]/g, '}');
+        s = s.replace(/\},\{/g, ',');
+        s = s.replace(/\[\{/g, '{');
+        s = s.trim();
+        
         try {
-            const n = String(name || '').trim().toLowerCase();
-            // Update the supported flag variable
-            if (n === 'lpp') lppSupported = supported;
-            else if (n === 'lpc') lpcSupported = supported;
-            else if (n === 'evsecc') evseccSupported = supported;
-            else if (n === 'evcc') evccSupported = supported;
-            else if (n === 'evcem') evcemSupported = supported;
-            else if (n === 'opev') opevSupported = supported;
-            else if (n === 'oscev') oscevSupported = supported;
-            else if (n === 'evsoc') evsocSupported = supported;
-            else if (n === 'cevc') cevcSupported = supported;
-            else if (n === 'mpc') mpcSupported = supported;
-            else if (n === 'mgcp') mgcpSupported = supported;
-            // Update the display using the generic function
-            updateUsecaseDisplay(n, supported);
-        } catch (e) {
+            const parsed = JSON.parse(s);
+            return JSON.stringify(parsed, null, 2);
+        } catch (_) {
+            return simplePretty(s);
+        }
+    } catch (e) {
+        return jsonStr;
+    }
+}
+
+function simplePretty(s) {
+    let out = '';
+    let indent = 0;
+    const indentStr = () => '  '.repeat(indent);
+    for (let i = 0; i < s.length; i++) {
+        const ch = s[i];
+        if (ch === '{' || ch === '[') {
+            out += ch + '\n';
+            indent++;
+            out += indentStr();
+        } else if (ch === '}' || ch === ']') {
+            out += '\n';
+            indent = Math.max(0, indent - 1);
+            out += indentStr() + ch;
+        } else if (ch === ',') {
+            out += ch + '\n' + indentStr();
+        } else {
+            out += ch;
         }
     }
+    return out;
+}
 
-    // initialize default (disabled) state until usecases loaded
-    document.addEventListener('DOMContentLoaded', () => {
-        ['lpp', 'lpc', 'evsecc', 'evcc', 'evcem', 'opev', 'oscev', 'evsoc', 'cevc', 'mpc', 'mgcp'].forEach(uc => {
-            updateUsecaseDisplay(uc, false);
+// ========== API FUNCTIONS ==========
+
+async function apiWrite(payload) {
+    try {
+        const res = await fetch('/api/write', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
         });
-    });
-
-    // adjust fetchUsecaseData to only update LPP fields when supported
-    const originalFetchLPP = fetchUsecaseData;
-    fetchUsecaseData = async function () {
-        try {
-            const res = await fetch('/api/usecasedata');
-            if (!res.ok) return;
-            const d = await res.json();
-            const fallback = v => (v !== undefined ? v : '-');
-
-            const setText = (id, v) => {
-                console.log('Updating %s to %s', id, v);
-                const el = document.getElementById(id);
-                if (!el) return;
-                const newText = String(fallback(v));
-                if (el.textContent !== newText) {
-                    el.textContent = newText;
-                    flashElement(el);
-                } else {
-                    el.textContent = newText;
-                }
-            };
-            const setManufacturer = (id, data) => {
-                const el = document.getElementById(id);
-                if (el && data !== undefined) {
-                    const newHtml = `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Device Name</div><div style="font-weight:600">${fallback(data.DeviceName)}</div></div>\n` +
-                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Device Code</div><div style="font-weight:600">${fallback(data.DeviceCode)}</div></div>\n` +
-                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Serial Number</div><div style="font-weight:600">${fallback(data.SerialNumber)}</div></div>\n` +
-                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Software Revision</div><div style="font-weight:600">${fallback(data.SoftwareRevision)}</div></div>\n` +
-                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Hardware Revision</div><div style="font-weight:600">${fallback(data.HardwareRevision)}</div></div>\n` +
-                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Vendor Name</div><div style="font-weight:600">${fallback(data.VendorName)}</div></div>\n` +
-                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Vendor Code</div><div style="font-weight:600">${fallback(data.VendorCode)}</div></div>\n` +
-                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Brand Name</div><div style="font-weight:600">${fallback(data.BrandName)}</div></div>\n` +
-                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Power Source</div><div style="font-weight:600">${fallback(data.PowerSource)}</div></div>\n` +
-                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Manufacturer Node ID</div><div style="font-weight:600">${fallback(data.ManufacturerNodeIdentification)}</div></div>\n` +
-                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Manufacturer Label</div><div style="font-weight:600">${fallback(data.ManufacturerLabel)}</div></div>\n` +
-                        `<div style="min-width:80px"><div style="font-size:12px;color:var(--muted)">Manufacturer Description</div><div style="font-weight:600">${fallback(data.ManufacturerDescription)}</div></div>`;
-                    if (el.innerHTML !== newHtml) {
-                        el.innerHTML = newHtml;
-                        flashElement(el);
-                    } else {
-                        el.innerHTML = newHtml;
-                    }
-                }
-            }
-            // update LPC
-            if (lpcSupported) {
-                setText('lpcLimitValue', d.lpcLimitValue);
-                setText('lpcLimitDur', d.lpcLimitDurSeconds);
-                setText('lpcLimitActive', d.lpcLimitActive);
-                setText('lpcFailsafePower', d.lpcFailsafePower);
-                setText('lpcFailsafeDuration', d.lpcFailsafeDurMinutes);
-                setText('lpcMaxNominalPower', d.lpcConsumptionLimitNominalMax)
-                setText('lpcHeartbeat', d.lpcHeartbeatOk)
-                setText('lpcHeartbeatTimestamp', d.lpcHeartbeatTimestamp)
-            }
-            if (lppSupported) {
-                // update LPP explicit fields only when supported
-                setText('lppFailsafeValue', d.lppFailsafeValue);
-                setText('lppFailsafeDur', d.lppFailsafeDurMinutes);
-                setText('lppLimitValue', d.lppLimitValue);
-                setText('lppLimitDur', d.lppLimitDurationSeconds);
-                setText('lppLimitActive', (d.lppLimitActive !== undefined) ? (d.lppLimitActive ? 'yes' : 'no') : '-');
-                setText('lppHeartbeat', d.lppHeartbeatOk)
-                setText('lppHeartbeatTimestamp', d.lppHeartbeatTimestamp)
-            }
-            if (evseccSupported) {
-                setManufacturer('evseccManufacturer', d.evseccManufacturerData);
-                setText('evseccOperatingState', d.evseccOperatingState);
-                setText('evseccErrorMessage', d.evseccOperatingStateDescription);
-            }
-            if (evccSupported) {
-                setManufacturer('evccManufacturer', d.evccManufacturerData);
-                setText('evccEvConnected', d.evccEvConnected);
-                setText('evccCommStandard', d.evccCommunicationStandard);
-                setText('evccAsymmetricCharging', d.evccAsymmetricChargingSupport);
-                setText('evccChargingLimitsMin', d.evccLimitMinimum);
-                setText('evccChargingLimitsMax', d.evccLimitMaximum);
-                setText('evccChargingLimitsStandy', d.evccLimitStandby);
-                setText('evccSleepMode', d.evccSleepMode);
-                if (d.evccIdentifications && Array.isArray(d.evccIdentifications) && d.evccIdentifications.length > 0) {
-                    setText('evccIdentificationType', d.evccIdentifications[0].ValueType);
-                    setText('evccIdentificationValue', d.evccIdentifications[0].Value);
-                } else {
-                    setText('evccIdentificationType', '-');
-                    setText('evccIdentificationValue', '-');
-                }
-            }
-            if(evcemSupported) {
-                setText('evcemChargingCurrent', d.evcemCurrentPerPhase);
-                setText('evcemChargingPower', d.evcemPowerPerPhase);
-                setText('evcemChargedEnergy', d.evcemEnergyCharged);
-            }
-            if (opevSupported) {
-                // Format load control limits - each has Value, IsActive, Phase
-                const formatLoadLimits = (limits) => {
-                    if (!limits || !Array.isArray(limits) || limits.length === 0) return '-';
-                    return limits.map(l => {
-                        const phase = l.Phase !== undefined ? `P${l.Phase}` : '';
-                        const val = l.Value !== undefined ? l.Value : '-';
-                        const active = l.IsActive ? ' (active)' : ' (inactive)';
-                        return `${phase}: ${val}A${active}`;
-                    }).join(', ');
-                };
-                // Format current limits array (simple float arrays per phase)
-                const formatCurrentArray = (arr) => {
-                    if (!arr || !Array.isArray(arr) || arr.length === 0) return '-';
-                    return arr.map((v, i) => `P${i + 1}: ${v}A`).join(', ');
-                };
-                setText('opevLoadLimit', formatLoadLimits(d.opevLoadControlLimit));
-                setText('opevCurrentLimitMin', formatCurrentArray(d.opevCurrentLimitMin));
-                setText('opevCurrentLimitMax', formatCurrentArray(d.opevCurrentLimitMax));
-                setText('opevCurrentLimitDefault', formatCurrentArray(d.opevCurrentLimitDefault));
-            }
-            if (oscevSupported) {
-                // Format load control limits - each has Value, IsActive, Phase
-                const formatLoadLimits = (limits) => {
-                    if (!limits || !Array.isArray(limits) || limits.length === 0) return '-';
-                    return limits.map(l => {
-                        const phase = l.Phase !== undefined ? `P${l.Phase}` : '';
-                        const val = l.Value !== undefined ? l.Value : '-';
-                        const active = l.IsActive ? ' (active)' : ' (inactive)';
-                        return `${phase}: ${val}A${active}`;
-                    }).join(', ');
-                };
-                // Format current limits array (simple float arrays per phase)
-                const formatCurrentArray = (arr) => {
-                    if (!arr || !Array.isArray(arr) || arr.length === 0) return '-';
-                    return arr.map((v, i) => `P${i + 1}: ${v}A`).join(', ');
-                };
-                setText('oscevLoadLimit', formatLoadLimits(d.oscevLoadControlLimit));
-                setText('oscevCurrentLimitMin', formatCurrentArray(d.oscevCurrentLimitMin));
-                setText('oscevCurrentLimitMax', formatCurrentArray(d.oscevCurrentLimitMax));
-                setText('oscevCurrentLimitDefault', formatCurrentArray(d.oscevCurrentLimitDefault));
-            }
-            if (evsocSupported) {
-                setText('evsocStateOfCharge', d.evsocStateOfCharge !== undefined ? d.evsocStateOfCharge.toFixed(1) : '-');
-            }
-            if (cevcSupported) {
-                setText('cevcChargeStrategy', d.cevcChargeStrategy);
-                // Energy demand fields
-                if (d.cevcEnergyDemand) {
-                    setText('cevcMinDemand', d.cevcEnergyDemand.MinDemand);
-                    setText('cevcOptDemand', d.cevcEnergyDemand.OptDemand);
-                    setText('cevcMaxDemand', d.cevcEnergyDemand.MaxDemand);
-                    setText('cevcDurationStart', d.cevcEnergyDemand.DurationUntilStart);
-                    setText('cevcDurationEnd', d.cevcEnergyDemand.DurationUntilEnd);
-                }
-                // Format charge plan slots
-                if (d.cevcChargePlan && d.cevcChargePlan.Slots && Array.isArray(d.cevcChargePlan.Slots)) {
-                    const planText = d.cevcChargePlan.Slots.map((slot, i) => {
-                        const start = slot.Start || 0;
-                        const end = slot.End || 0;
-                        const minPower = slot.MinPower !== undefined ? slot.MinPower : '-';
-                        const maxPower = slot.MaxPower !== undefined ? slot.MaxPower : '-';
-                        const minEnergy = slot.MinEnergy !== undefined ? slot.MinEnergy : '-';
-                        const maxEnergy = slot.MaxEnergy !== undefined ? slot.MaxEnergy : '-';
-                        return `Slot ${i + 1}: ${start}s - ${end}s | Power: ${minPower}W - ${maxPower}W | Energy: ${minEnergy}Wh - ${maxEnergy}Wh`;
-                    }).join('\n');
-                    setText('cevcChargePlan', planText || '-');
-                } else {
-                    setText('cevcChargePlan', '-');
-                }
-            }
-            if (mpcSupported) {
-                setText('mpcPower', d.mpcPower);
-                // Format per-phase arrays
-                const formatPhaseArray = (arr, unit) => {
-                    if (!arr || !Array.isArray(arr) || arr.length === 0) return '-';
-                    return arr.map((v, i) => `P${i + 1}: ${v}${unit}`).join(', ');
-                };
-                setText('mpcPowerPerPhase', formatPhaseArray(d.mpcPowerPerPhase, 'W'));
-                setText('mpcCurrentPerPhase', formatPhaseArray(d.mpcCurrentPerPhase, 'A'));
-                setText('mpcVoltagePerPhase', formatPhaseArray(d.mpcVoltagePerPhase, 'V'));
-                setText('mpcFrequency', d.mpcFrequency);
-                setText('mpcEnergyConsumed', d.mpcEnergyConsumed);
-                setText('mpcEnergyProduced', d.mpcEnergyProduced);
-            }
-            if (mgcpSupported) {
-                setText('mgcpPower', d.mgcPower);
-                setText('mgcpPowerLimitationFactor', d.mgcPowerLimitationFactor);
-                // Format per-phase arrays
-                const formatPhaseArray = (arr, unit) => {
-                    if (!arr || !Array.isArray(arr) || arr.length === 0) return '-';
-                    return arr.map((v, i) => `P${i + 1}: ${v}${unit}`).join(', ');
-                };
-                setText('mgcpCurrentPerPhase', formatPhaseArray(d.mgcCurrentPerPhase, 'A'));
-                setText('mgcpVoltagePerPhase', formatPhaseArray(d.mgcVoltagePerPhase, 'V'));
-                setText('mgcpFrequency', d.mgcFrequency);
-                setText('mgcpEnergyFeedIn', d.mgcEnergyFeedIn);
-                setText('mgcpEnergyConsumed', d.mgcEnergyConsumed);
-            }
-
-        } catch (e) {
-            // ignore
+        const txt = await res.text();
+        if (!res.ok) {
+            alert('Write failed: ' + txt);
         }
+    } catch (err) {
+        alert('Request failed: ' + err);
     }
+}
+
+// ========== INITIALIZATION ==========
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // Load configuration first so we can hide disabled usecases when creating tabs
+    await loadConfig();
+
+    // Initial fetch
+    fetchPeers();
+    
+    // Connect WebSocket
+    connectWebSocket();
+    
+    // Poll for peers list periodically
+    setInterval(fetchPeers, 5000);
+    
+    // Poll active peer data
+    setInterval(() => {
+        if (peersState.activeTab !== 'peers-list') {
+            const ski = peersState.activeTab.replace('peer-', '');
+            refreshPeerData(ski);
+        }
+    }, 2000);
+});
 </script>
 </body>
 </html>

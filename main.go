@@ -43,8 +43,6 @@ import (
 	"github.com/enbility/spine-go/model"
 )
 
-var remoteSki string
-
 // Config represents the application configuration
 type Config struct {
 	Usecases map[string]UsecaseConfig `json:"usecases"`
@@ -213,6 +211,37 @@ type usecaseData struct {
 	CevcChargePlan            ucapi.ChargePlan               `json:"cevcChargePlan,omitempty"`
 }
 
+// peerData holds all data for a single peer connection
+type peerData struct {
+	usecaseData      usecaseData
+	entities         []spineapi.EntityRemoteInterface
+	lastEntitiesJSON []byte
+	usecaseState     map[string]bool
+	connected        bool
+	ski              string
+	lastSeen         time.Time
+	deviceName       string
+	brand            string
+	model            string
+	deviceType       string
+	serial           string
+	identifier       string
+}
+
+// PeerInfo represents peer information for API responses
+type PeerInfo struct {
+	SKI        string          `json:"ski"`
+	Connected  bool            `json:"connected"`
+	LastSeen   time.Time       `json:"lastSeen"`
+	Usecases   map[string]bool `json:"usecases"`
+	DeviceName string          `json:"deviceName"`
+	Brand      string          `json:"brand"`
+	Model      string          `json:"model"`
+	DeviceType string          `json:"deviceType"`
+	Serial     string          `json:"serial"`
+	Identifier string          `json:"identifier"`
+}
+
 type hems struct {
 	myService *service.Service
 
@@ -237,22 +266,95 @@ type hems struct {
 	wsMu    sync.Mutex
 	wsConns map[*websocket.Conn]struct{}
 
-	// usecase support tracking
-	ucMu         sync.Mutex
-	usecaseState map[string]bool
-
-	// latest entities from remote device
-	entities []spineapi.EntityRemoteInterface
-
-	// last entities JSON payload (cached)
-	lastEntitiesJSON []byte
-
-	// usecase data
-	usecaseData usecaseData
+	// peers management
+	peers              map[string]*peerData
+	peersMu            sync.Mutex
+	globalUseCaseState map[string]bool
 
 	// configuration
 	config *Config
 }
+
+// getOrCreatePeer gets an existing peer or creates a new one
+func (h *hems) getOrCreatePeer(ski string) *peerData {
+	h.peersMu.Lock()
+	defer h.peersMu.Unlock()
+
+	if h.peers == nil {
+		h.peers = make(map[string]*peerData)
+	}
+
+	if peer, exists := h.peers[ski]; exists {
+		peer.lastSeen = time.Now()
+		return peer
+	}
+
+	peer := &peerData{
+		usecaseData:  usecaseData{},
+		entities:     nil,
+		usecaseState: make(map[string]bool),
+		connected:    false,
+		ski:          ski,
+		lastSeen:     time.Now(),
+	}
+	h.peers[ski] = peer
+
+	// Initialize usecase states from global state
+	ucMu.Lock()
+	for uc, supported := range h.globalUseCaseState {
+		peer.usecaseState[uc] = supported
+	}
+	ucMu.Unlock()
+
+	return peer
+}
+
+// getPeer gets an existing peer or nil if not found
+func (h *hems) getPeer(ski string) *peerData {
+	h.peersMu.Lock()
+	defer h.peersMu.Unlock()
+
+	if h.peers == nil {
+		return nil
+	}
+
+	if peer, exists := h.peers[ski]; exists {
+		return peer
+	}
+	return nil
+}
+
+// removePeer removes a peer from the map
+func (h *hems) removePeer(ski string) {
+	h.peersMu.Lock()
+	defer h.peersMu.Unlock()
+
+	if h.peers != nil {
+		delete(h.peers, ski)
+	}
+}
+
+// getAllPeers returns a copy of all peers
+func (h *hems) getAllPeers() map[string]*peerData {
+	h.peersMu.Lock()
+	defer h.peersMu.Unlock()
+
+	if h.peers == nil {
+		return make(map[string]*peerData)
+	}
+
+	peersCopy := make(map[string]*peerData, len(h.peers))
+	for k, v := range h.peers {
+		peersCopy[k] = v
+	}
+	return peersCopy
+}
+
+// usecase update mutex (reused for global state)
+var ucMu sync.Mutex
+
+// usecaseDataMutex for thread-safe access to peer usecase data
+var usecaseDataMutex sync.Mutex
 
 func (h *hems) run() {
 	var err error
@@ -266,18 +368,13 @@ func (h *hems) run() {
 	defaultCertPath := filepath.Join(exeDir, "cert.pem")
 	defaultKeyPath := filepath.Join(exeDir, "key.pem")
 
-	if len(os.Args) == 5 {
-		remoteSki = os.Args[2]
-
-		certificate, err = tls.LoadX509KeyPair(os.Args[3], os.Args[4])
+	if len(os.Args) == 4 {
+		certificate, err = tls.LoadX509KeyPair(os.Args[2], os.Args[3])
 		if err != nil {
 			usage()
 			log.Fatal(err)
 		}
 	} else {
-		if len(os.Args) >= 3 {
-			remoteSki = os.Args[2]
-		}
 		if _, errCert := os.Stat(defaultCertPath); errCert == nil {
 			if _, errKey := os.Stat(defaultKeyPath); errKey == nil {
 				certificate, err = tls.LoadX509KeyPair(defaultCertPath, defaultKeyPath)
@@ -330,8 +427,8 @@ func (h *hems) run() {
 	h.maxLogs = 1000
 	h.logs = make([]string, 0, 200)
 
-	// initialize usecase state map
-	h.usecaseState = make(map[string]bool)
+	// initialize global usecase state map
+	h.globalUseCaseState = make(map[string]bool)
 
 	// load configuration
 	h.config, err = loadConfig()
@@ -464,12 +561,6 @@ func (h *hems) run() {
 		fmt.Println("Usecase EVSOC disabled by config")
 	}
 
-	if len(remoteSki) == 0 {
-		os.Exit(0)
-	}
-
-	h.myService.RegisterRemoteSKI(remoteSki, "")
-
 	h.myService.Start()
 
 	// start web interface in background
@@ -480,134 +571,143 @@ func (h *hems) run() {
 // HandleEgLPP Energy Guard LPP Handler
 func (h *hems) HandleEgLPP(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("EgLPP Event: ", event)
+
+	peer := h.getOrCreatePeer(ski)
+
 	if event == eglpp.UseCaseSupportUpdate {
-		h.setUsecaseSupported("LPP", true)
+		h.setUsecaseSupportedForPeer(peer, "LPP", true)
 	}
 	switch event {
 	case eglpp.UseCaseSupportUpdate:
-		h.setUsecaseSupported("LPP", true)
+		h.setUsecaseSupportedForPeer(peer, "LPP", true)
 	case eglpp.DataUpdateFailsafeDurationMinimum:
 		minDur, err := h.uceglpp.FailsafeDurationMinimum(entity)
 		if err != nil {
 			fmt.Println("Error getting FailsafeDurationMinimum:", err)
 		} else {
-			h.usecaseData.LppFailsafeDur = minDur / time.Minute
+			peer.usecaseData.LppFailsafeDur = minDur / time.Minute
 		}
 	case eglpp.DataUpdateFailsafeProductionActivePowerLimit:
 		powerLimit, err := h.uceglpp.FailsafeProductionActivePowerLimit(entity)
 		if err != nil {
 			fmt.Println("Error getting FailsafeConsumptionActivePowerLimit:", err)
 		} else {
-			h.usecaseData.LppFailsafeValue = powerLimit
+			peer.usecaseData.LppFailsafeValue = powerLimit
 		}
 	case eglpp.DataUpdateLimit:
 		limit, err := h.uceglpp.ProductionLimit(entity)
 		if err != nil {
 			fmt.Println("Error getting ProductionNominalMax:", err)
 		} else {
-			h.usecaseData.LppLimitValue = limit.Value
-			h.usecaseData.LppLimitDuration = limit.Duration / time.Second
-			h.usecaseData.LppLimitActive = limit.IsActive
+			peer.usecaseData.LppLimitValue = limit.Value
+			peer.usecaseData.LppLimitDuration = limit.Duration / time.Second
+			peer.usecaseData.LppLimitActive = limit.IsActive
 		}
 	case eglpp.DataUpdateHeartbeat:
-		h.usecaseData.LppHeartbeatOk = h.uceglpp.IsHeartbeatWithinDuration(entity)
-		h.usecaseData.LppHeartbeatTimestamp = time.Now()
+		peer.usecaseData.LppHeartbeatOk = h.uceglpp.IsHeartbeatWithinDuration(entity)
+		peer.usecaseData.LppHeartbeatTimestamp = time.Now()
 	}
-	h.updateEntitiesFromDevice(device)
+	h.updateEntitiesFromDevice(ski, device, peer)
 }
 
 // HandleEgLPC Energy Guard LPC Handler
 func (h *hems) HandleEgLPC(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("EgLPC Event: ", event)
+
+	peer := h.getOrCreatePeer(ski)
+
 	switch event {
 	case eglpc.UseCaseSupportUpdate:
-		h.setUsecaseSupported("LPC", true)
+		h.setUsecaseSupportedForPeer(peer, "LPC", true)
 	case eglpc.DataUpdateLimit:
 		limit, err := h.uceglpc.ConsumptionLimit(entity)
 		if err != nil {
 			fmt.Println("Error getting ConsumptionNominalMax:", err)
 		} else {
-			h.usecaseData.LpcLimitActive = limit.IsActive
-			h.usecaseData.LpcLimitDurSeconds = limit.Duration / time.Second
-			h.usecaseData.LpcLimitValue = limit.Value
+			peer.usecaseData.LpcLimitActive = limit.IsActive
+			peer.usecaseData.LpcLimitDurSeconds = limit.Duration / time.Second
+			peer.usecaseData.LpcLimitValue = limit.Value
 		}
 	case eglpc.DataUpdateFailsafeDurationMinimum:
 		minDur, err := h.uceglpc.FailsafeDurationMinimum(entity)
 		if err != nil {
 			fmt.Println("Error getting FailsafeDurationMinimum:", err)
 		} else {
-			h.usecaseData.LpcFailsafeDur = minDur / time.Minute
+			peer.usecaseData.LpcFailsafeDur = minDur / time.Minute
 		}
 	case eglpc.DataUpdateFailsafeConsumptionActivePowerLimit:
 		powerLimit, err := h.uceglpc.FailsafeConsumptionActivePowerLimit(entity)
 		if err != nil {
 			fmt.Println("Error getting FailsafeConsumptionActivePowerLimit:", err)
 		} else {
-			h.usecaseData.LpcFailsafePower = powerLimit
+			peer.usecaseData.LpcFailsafePower = powerLimit
 		}
 	case eglpc.DataUpdateHeartbeat:
-		h.usecaseData.LpcHeartbeatOk = h.uceglpc.IsHeartbeatWithinDuration(entity)
-		h.usecaseData.LpcHeartbeatTimestamp = time.Now()
+		peer.usecaseData.LpcHeartbeatOk = h.uceglpc.IsHeartbeatWithinDuration(entity)
+		peer.usecaseData.LpcHeartbeatTimestamp = time.Now()
 	default:
 		nominal, err := h.uceglpc.ConsumptionNominalMax(entity)
 		if err != nil {
 			fmt.Println("Error getting ConsumptionNominalMax:", err)
 		} else {
-			h.usecaseData.LpcConsumptionLimitNominalMax = nominal
+			peer.usecaseData.LpcConsumptionLimitNominalMax = nominal
 		}
 	}
-	h.updateEntitiesFromDevice(device)
+	h.updateEntitiesFromDevice(ski, device, peer)
 }
 
 // HandleEgEvcc Energy Guard EVCC Handler
 func (h *hems) HandleEgEvcc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("EgEVCC Event: ", event)
+
+	peer := h.getOrCreatePeer(ski)
+
 	switch event {
 	case cemevcc.UseCaseSupportUpdate:
-		h.setUsecaseSupported("EVCC", true)
+		h.setUsecaseSupportedForPeer(peer, "EVCC", true)
 	case cemevcc.DataUpdateManufacturerData:
 		manufacturer, err := h.uccemevcc.ManufacturerData(entity)
 		if err != nil {
 			fmt.Println("Error getting ManufacturerData:", err)
 		} else {
-			h.usecaseData.EvccManufacturerData = manufacturer
+			peer.usecaseData.EvccManufacturerData = manufacturer
 		}
 	case cemevcc.DataUpdateChargeState:
 		chargeState, err := h.uccemevcc.ChargeState(entity)
 		if err != nil {
 			fmt.Println("Error getting ChargeState:", err)
 		} else {
-			h.usecaseData.EvccChargeState = string(chargeState)
+			peer.usecaseData.EvccChargeState = string(chargeState)
 		}
 	case cemevcc.DataUpdateAsymmetricChargingSupport:
 		support, err := h.uccemevcc.AsymmetricChargingSupport(entity)
 		if err != nil {
 			fmt.Println("Error getting AsymmetricChargingSupport:", err)
 		} else {
-			h.usecaseData.EvccAsymmetricChargingSupport = support
+			peer.usecaseData.EvccAsymmetricChargingSupport = support
 		}
 	case cemevcc.DataUpdateCommunicationStandard:
 		standard, err := h.uccemevcc.CommunicationStandard(entity)
 		if err != nil {
 			fmt.Println("Error getting CommunicationStandard:", err)
 		} else {
-			h.usecaseData.EvccCommunicationStandard = string(standard)
+			peer.usecaseData.EvccCommunicationStandard = string(standard)
 		}
 	case cemevcc.DataUpdateCurrentLimits:
 		minimum, maximum, standby, err := h.uccemevcc.ChargingPowerLimits(entity)
 		if err != nil {
 			fmt.Println("Error getting ChargingPowerLimits:", err, minimum, maximum, standby)
 		} else {
-			h.usecaseData.EvccLimitMinimum = minimum
-			h.usecaseData.EvccLimitMaximum = maximum
-			h.usecaseData.EvccLimitStandby = standby
+			peer.usecaseData.EvccLimitMinimum = minimum
+			peer.usecaseData.EvccLimitMaximum = maximum
+			peer.usecaseData.EvccLimitStandby = standby
 		}
 	case cemevcc.DataUpdateIdentifications:
 		identifications, err := h.uccemevcc.Identifications(entity)
 		if err != nil {
 			fmt.Println("Error getting Identifications:", err)
 		} else {
-			h.usecaseData.EvccIdentifications = identifications
+			peer.usecaseData.EvccIdentifications = identifications
 		}
 
 	case cemevcc.DataUpdateIsInSleepMode:
@@ -615,105 +715,114 @@ func (h *hems) HandleEgEvcc(ski string, device spineapi.DeviceRemoteInterface, e
 		if err != nil {
 			fmt.Println("Error getting IsInSleepMode:", err)
 		} else {
-			h.usecaseData.EvccSleepMode = sleepMode
+			peer.usecaseData.EvccSleepMode = sleepMode
 		}
 	case cemevcc.EvConnected:
 		fmt.Println("EVCC Connected")
-		h.usecaseData.EvccEvConnected = true
+		peer.usecaseData.EvccEvConnected = true
 	case cemevcc.EvDisconnected:
 		fmt.Println("EVCC Disconnected")
-		h.usecaseData.EvccEvConnected = false
+		peer.usecaseData.EvccEvConnected = false
 	}
-	h.updateEntitiesFromDevice(device)
+	h.updateEntitiesFromDevice(ski, device, peer)
 }
 
 // HandleEgEvcem Energy Guard EVCEM Handler
 func (h *hems) HandleEgEvcem(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("EgEVCEM Event: ", event)
+
+	peer := h.getOrCreatePeer(ski)
+
 	switch event {
 	case cemevcem.UseCaseSupportUpdate:
-		h.setUsecaseSupported("EVCEM", true)
+		h.setUsecaseSupportedForPeer(peer, "EVCEM", true)
 	case cemevcem.DataUpdateCurrentPerPhase:
 		currentArray, err := h.uccemevcem.CurrentPerPhase(entity)
 		if err != nil {
 			fmt.Println("Error getting CurrentPerPhase:", err)
 		} else {
-			h.usecaseData.EvcemCurrentPerPhase = currentArray
+			peer.usecaseData.EvcemCurrentPerPhase = currentArray
 		}
 	case cemevcem.DataUpdatePhasesConnected:
 		phasesConnected, err := h.uccemevcem.PhasesConnected(entity)
 		if err != nil {
 			fmt.Println("Error getting PhasesConnected:", err)
 		} else {
-			h.usecaseData.EvcemPhasesConnected = phasesConnected
+			peer.usecaseData.EvcemPhasesConnected = phasesConnected
 		}
 	case cemevcem.DataUpdateEnergyCharged:
 		energyCharged, err := h.uccemevcem.EnergyCharged(entity)
 		if err != nil {
 			fmt.Println("Error getting EnergyCharged:", err)
 		} else {
-			h.usecaseData.EvcemEnergyCharged = energyCharged
+			peer.usecaseData.EvcemEnergyCharged = energyCharged
 		}
 	case cemevcem.DataUpdatePowerPerPhase:
 		powerPerPhaseArray, err := h.uccemevcem.PowerPerPhase(entity)
 		if err != nil {
 			fmt.Println("Error getting PowerPerPhase:", err)
 		} else {
-			h.usecaseData.EvcemPowerPerPhase = powerPerPhaseArray
+			peer.usecaseData.EvcemPowerPerPhase = powerPerPhaseArray
 		}
 	}
-	h.updateEntitiesFromDevice(device)
+	h.updateEntitiesFromDevice(ski, device, peer)
 }
 
 // HandleEgEvsecc Energy Guard EVSECC Handler
 func (h *hems) HandleEgEvsecc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("EgEVSECC Event: ", event)
+
+	peer := h.getOrCreatePeer(ski)
+
 	switch event {
 	case cemevsecc.UseCaseSupportUpdate:
-		h.setUsecaseSupported("EVSECC", true)
+		h.setUsecaseSupportedForPeer(peer, "EVSECC", true)
 	case cemevsecc.DataUpdateManufacturerData:
 		manufacturer, err := h.uccemevsecc.ManufacturerData(entity)
 		if err != nil {
 			fmt.Println("Error getting ManufacturerData:", err)
 		} else {
-			h.usecaseData.EvseccManufacturerData = manufacturer
+			peer.usecaseData.EvseccManufacturerData = manufacturer
 		}
 	case cemevsecc.DataUpdateOperatingState:
 		operatingState, errorMessage, err := h.uccemevsecc.OperatingState(entity)
 		if err != nil {
 			fmt.Println("Error getting OperatingState:", err)
 		} else {
-			h.usecaseData.EvseccOperatingState = string(operatingState)
-			h.usecaseData.EvseccOperatingStateDescription = errorMessage
+			peer.usecaseData.EvseccOperatingState = string(operatingState)
+			peer.usecaseData.EvseccOperatingStateDescription = errorMessage
 		}
 	}
-	h.updateEntitiesFromDevice(device)
+	h.updateEntitiesFromDevice(ski, device, peer)
 }
 
 // HandleEgCevc Energy Guard CEVC Handler
 func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("EgCEVC Event: ", event)
+
+	peer := h.getOrCreatePeer(ski)
+
 	switch event {
 	case cemcevc.UseCaseSupportUpdate:
-		h.setUsecaseSupported("CEVC", true)
+		h.setUsecaseSupportedForPeer(peer, "CEVC", true)
 	case cemcevc.DataUpdateEnergyDemand:
 		demand, err := h.uccemcevc.EnergyDemand(entity)
 		if err != nil {
 			fmt.Println("Error getting EnergyDemand:", err)
 		} else {
-			h.usecaseData.CevcEnergyDemand = demand
+			peer.usecaseData.CevcEnergyDemand = demand
 		}
 		// Also update charge strategy when energy demand changes
 		fmt.Println("cevc demand: ", demand)
 		strategy := h.uccemcevc.ChargeStrategy(entity)
-		h.usecaseData.CevcChargeStrategy = string(strategy)
+		peer.usecaseData.CevcChargeStrategy = string(strategy)
 	case cemcevc.DataUpdateTimeSlotConstraints:
 		constraints, err := h.uccemcevc.TimeSlotConstraints(entity)
 		if err != nil {
 			fmt.Println("Error getting TimeSlotConstraints:", err)
 		} else {
 			fmt.Println("TimeSlotConstraints: ", constraints)
-			h.usecaseData.CevcTimeSlotConstraints = constraints
+			peer.usecaseData.CevcTimeSlotConstraints = constraints
 		}
 	case cemcevc.DataUpdateIncentiveTable:
 		incentives, err := h.uccemcevc.IncentiveConstraints(entity)
@@ -721,7 +830,7 @@ func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, e
 			fmt.Println("Error getting IncentiveConstraints:", err)
 		} else {
 			fmt.Println("IncentiveConstraints: ", incentives)
-			h.usecaseData.CevcIncentiveConstraints = incentives
+			peer.usecaseData.CevcIncentiveConstraints = incentives
 		}
 	case cemcevc.DataUpdateChargePlanConstraints:
 		planConstraints, err := h.uccemcevc.ChargePlanConstraints(entity)
@@ -729,7 +838,7 @@ func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, e
 			fmt.Println("Error getting ChargePlanConstraints:", err)
 		} else {
 			fmt.Println("ChargePlanConstraints: ", planConstraints)
-			h.usecaseData.CevcChargePlanConstraints = planConstraints
+			peer.usecaseData.CevcChargePlanConstraints = planConstraints
 		}
 	case cemcevc.DataUpdateChargePlan:
 		plan, err := h.uccemcevc.ChargePlan(entity)
@@ -737,7 +846,7 @@ func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, e
 			fmt.Println("Error getting ChargePlan:", err)
 		} else {
 			fmt.Println("ChargePlan: ", plan)
-			h.usecaseData.CevcChargePlan = plan
+			peer.usecaseData.CevcChargePlan = plan
 		}
 	case cemcevc.DataRequestedPowerLimitsAndIncentives:
 		fmt.Println("CEVC: EV requested power limits and incentives - sending defaults")
@@ -759,140 +868,149 @@ func (h *hems) HandleEgCevc(ski string, device spineapi.DeviceRemoteInterface, e
 			fmt.Println("Error writing IncentiveTableDescriptions:", err)
 		}
 	}
-	h.updateEntitiesFromDevice(device)
+	h.updateEntitiesFromDevice(ski, device, peer)
 }
 
 // HandleMaMpc MaMPC Handler
 
 func (h *hems) HandleMaMpc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("MaMpc Event: ", event)
+
+	peer := h.getOrCreatePeer(ski)
+
 	switch event {
 	case mampc.UseCaseSupportUpdate:
-		h.setUsecaseSupported("MPC", true)
+		h.setUsecaseSupportedForPeer(peer, "MPC", true)
 	case mampc.DataUpdatePowerPerPhase:
 		power, err := h.ucmampc.PowerPerPhase(entity)
 		if err != nil {
 			fmt.Println("Error getting PowerPerPhase:", err)
 		} else {
-			h.usecaseData.MpcPowerPerPhase = power
+			peer.usecaseData.MpcPowerPerPhase = power
 		}
 	case mampc.DataUpdateCurrentsPerPhase:
 		currents, err := h.ucmampc.CurrentPerPhase(entity)
 		if err != nil {
 			fmt.Println("Error getting CurrentPerPhase:", err)
 		} else {
-			h.usecaseData.MpcCurrentPerPhase = currents
+			peer.usecaseData.MpcCurrentPerPhase = currents
 		}
 	case mampc.DataUpdatePower:
 		power, err := h.ucmampc.Power(entity)
 		if err != nil {
 			fmt.Println("Error getting Power:", err)
 		} else {
-			h.usecaseData.MpcPower = power
+			peer.usecaseData.MpcPower = power
 		}
 	case mampc.DataUpdateEnergyConsumed:
 		consumed, err := h.ucmampc.EnergyConsumed(entity)
 		if err != nil {
 			fmt.Println("Error getting EnergyConsumed:", err)
 		} else {
-			h.usecaseData.MpcEnergyConsumed = consumed
+			peer.usecaseData.MpcEnergyConsumed = consumed
 		}
 	case mampc.DataUpdateEnergyProduced:
 		produced, err := h.ucmampc.EnergyProduced(entity)
 		if err != nil {
 			fmt.Println("Error getting EnergyProduced:", err)
 		} else {
-			h.usecaseData.MpcEnergyProduced = produced
+			peer.usecaseData.MpcEnergyProduced = produced
 		}
 	case mampc.DataUpdateFrequency:
 		frequency, err := h.ucmampc.Frequency(entity)
 		if err != nil {
 			fmt.Println("Error getting Frequency:", err)
 		} else {
-			h.usecaseData.MpcFrequency = frequency
+			peer.usecaseData.MpcFrequency = frequency
 		}
 	case mampc.DataUpdateVoltagePerPhase:
 		voltages, err := h.ucmampc.VoltagePerPhase(entity)
 		if err != nil {
 			fmt.Println("Error getting VoltagePerPhase:", err)
 		} else {
-			h.usecaseData.MpcVoltagePerPhase = voltages
+			peer.usecaseData.MpcVoltagePerPhase = voltages
 		}
 	}
-	h.updateEntitiesFromDevice(device)
+	h.updateEntitiesFromDevice(ski, device, peer)
 }
 
 // HandleMaMGCP MaMGCP Handler (Monitoring of Grid Connection Point)
 func (h *hems) HandleMaMGCP(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("MaMGCP Event: ", event)
+
+	peer := h.getOrCreatePeer(ski)
+
 	switch event {
 	case mamgrp.UseCaseSupportUpdate:
-		h.setUsecaseSupported("MGCP", true)
+		h.setUsecaseSupportedForPeer(peer, "MGCP", true)
 	case mamgrp.DataUpdatePowerLimitationFactor:
 		factor, err := h.ucmamgrp.PowerLimitationFactor(entity)
 		if err != nil {
 			fmt.Println("Error getting PowerLimitationFactor:", err)
 		} else {
-			h.usecaseData.MgcPowerLimitationFactor = factor
+			peer.usecaseData.MgcPowerLimitationFactor = factor
 		}
 	case mamgrp.DataUpdatePower:
 		power, err := h.ucmamgrp.Power(entity)
 		if err != nil {
 			fmt.Println("Error getting MGCP Power:", err)
 		} else {
-			h.usecaseData.MgcPower = power
+			peer.usecaseData.MgcPower = power
 		}
 	case mamgrp.DataUpdateEnergyFeedIn:
 		feedIn, err := h.ucmamgrp.EnergyFeedIn(entity)
 		if err != nil {
 			fmt.Println("Error getting EnergyFeedIn:", err)
 		} else {
-			h.usecaseData.MgcEnergyFeedIn = feedIn
+			peer.usecaseData.MgcEnergyFeedIn = feedIn
 		}
 	case mamgrp.DataUpdateEnergyConsumed:
 		consumed, err := h.ucmamgrp.EnergyConsumed(entity)
 		if err != nil {
 			fmt.Println("Error getting MGCP EnergyConsumed:", err)
 		} else {
-			h.usecaseData.MgcEnergyConsumed = consumed
+			peer.usecaseData.MgcEnergyConsumed = consumed
 		}
 	case mamgrp.DataUpdateCurrentPerPhase:
 		currents, err := h.ucmamgrp.CurrentPerPhase(entity)
 		if err != nil {
 			fmt.Println("Error getting MGCP CurrentPerPhase:", err)
 		} else {
-			h.usecaseData.MgcCurrentPerPhase = currents
+			peer.usecaseData.MgcCurrentPerPhase = currents
 		}
 	case mamgrp.DataUpdateVoltagePerPhase:
 		voltages, err := h.ucmamgrp.VoltagePerPhase(entity)
 		if err != nil {
 			fmt.Println("Error getting MGCP VoltagePerPhase:", err)
 		} else {
-			h.usecaseData.MgcVoltagePerPhase = voltages
+			peer.usecaseData.MgcVoltagePerPhase = voltages
 		}
 	case mamgrp.DataUpdateFrequency:
 		frequency, err := h.ucmamgrp.Frequency(entity)
 		if err != nil {
 			fmt.Println("Error getting MGCP Frequency:", err)
 		} else {
-			h.usecaseData.MgcFrequency = frequency
+			peer.usecaseData.MgcFrequency = frequency
 		}
 	}
-	h.updateEntitiesFromDevice(device)
+	h.updateEntitiesFromDevice(ski, device, peer)
 }
 
 func (h *hems) HandleCemOpev(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("CemOpev Event: ", event)
+
+	peer := h.getOrCreatePeer(ski)
+
 	switch event {
 	case cemopev.UseCaseSupportUpdate:
-		h.setUsecaseSupported("OPEV", true)
+		h.setUsecaseSupportedForPeer(peer, "OPEV", true)
 	case cemopev.DataUpdateLimit:
 		loadlimit, err := h.uccemopev.LoadControlLimits(entity)
 		if err != nil {
 			fmt.Println("Error getting LoadControlLimits:", err)
 		} else {
 			fmt.Println("LoadControlLimits:", loadlimit)
-			h.usecaseData.OpevLoadControlLimit = loadlimit
+			peer.usecaseData.OpevLoadControlLimit = loadlimit
 		}
 	case cemopev.DataUpdateCurrentLimits:
 		currentlimitMin, currentlimitMax, currentlimitDefault, err := h.uccemopev.CurrentLimits(entity)
@@ -900,56 +1018,62 @@ func (h *hems) HandleCemOpev(ski string, device spineapi.DeviceRemoteInterface, 
 			fmt.Println("Error getting CurrentLimits:", err)
 		} else {
 			fmt.Println("CurrentLimits:", currentlimitMin, currentlimitMax, currentlimitDefault)
-			h.usecaseData.OpevCurrentLimitMin = currentlimitMin
-			h.usecaseData.OpevCurrentLimitMax = currentlimitMax
-			h.usecaseData.OpevCurrentLimitDefault = currentlimitDefault
+			peer.usecaseData.OpevCurrentLimitMin = currentlimitMin
+			peer.usecaseData.OpevCurrentLimitMax = currentlimitMax
+			peer.usecaseData.OpevCurrentLimitDefault = currentlimitDefault
 		}
 	}
-	h.updateEntitiesFromDevice(device)
+	h.updateEntitiesFromDevice(ski, device, peer)
 
 }
 
 // HandleCemOscev CEM OSCEV Handler (Optimization of Self-Consumption During EV Charging)
 func (h *hems) HandleCemOscev(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("CemOscev Event: ", event)
+
+	peer := h.getOrCreatePeer(ski)
+
 	switch event {
 	case cemoscev.UseCaseSupportUpdate:
-		h.setUsecaseSupported("OSCEV", true)
+		h.setUsecaseSupportedForPeer(peer, "OSCEV", true)
 	case cemoscev.DataUpdateLimit:
 		loadlimit, err := h.uccemoscev.LoadControlLimits(entity)
 		if err != nil {
 			fmt.Println("Error getting OSCEV LoadControlLimits:", err)
 		} else {
-			h.usecaseData.OscevLoadControlLimit = loadlimit
+			peer.usecaseData.OscevLoadControlLimit = loadlimit
 		}
 	case cemoscev.DataUpdateCurrentLimits:
 		currentlimitMin, currentlimitMax, currentlimitDefault, err := h.uccemoscev.CurrentLimits(entity)
 		if err != nil {
 			fmt.Println("Error getting OSCEV CurrentLimits:", err)
 		} else {
-			h.usecaseData.OscevCurrentLimitMin = currentlimitMin
-			h.usecaseData.OscevCurrentLimitMax = currentlimitMax
-			h.usecaseData.OscevCurrentLimitDefault = currentlimitDefault
+			peer.usecaseData.OscevCurrentLimitMin = currentlimitMin
+			peer.usecaseData.OscevCurrentLimitMax = currentlimitMax
+			peer.usecaseData.OscevCurrentLimitDefault = currentlimitDefault
 		}
 	}
-	h.updateEntitiesFromDevice(device)
+	h.updateEntitiesFromDevice(ski, device, peer)
 }
 
 // HandleCemEvsoc CEM EVSOC Handler (EV State Of Charge)
 func (h *hems) HandleCemEvsoc(ski string, device spineapi.DeviceRemoteInterface, entity spineapi.EntityRemoteInterface, event api.EventType) {
 	fmt.Println("CemEvsoc Event: ", event)
+
+	peer := h.getOrCreatePeer(ski)
+
 	switch event {
 	case cemevsoc.UseCaseSupportUpdate:
-		h.setUsecaseSupported("EVSOC", true)
+		h.setUsecaseSupportedForPeer(peer, "EVSOC", true)
 	case cemevsoc.DataUpdateStateOfCharge:
 		soc, err := h.uccemevsoc.StateOfCharge(entity)
 		if err != nil {
 			fmt.Println("Error getting StateOfCharge:", err)
 		} else {
-			h.usecaseData.EvsocStateOfCharge = soc
+			peer.usecaseData.EvsocStateOfCharge = soc
 		}
 	}
-	h.updateEntitiesFromDevice(device)
+	h.updateEntitiesFromDevice(ski, device, peer)
 }
 
 // Write Functions
@@ -1132,27 +1256,104 @@ func (h *hems) WriteOPEVLoadControlLimits(limits []ucapi.LoadLimitsPhase) error 
 
 // EEBUSServiceHandler
 
-func (h *hems) RemoteSKIConnected(service api.ServiceInterface, ski string) {}
+func (h *hems) RemoteSKIConnected(service api.ServiceInterface, ski string) {
+	fmt.Printf("Remote SKI connected: %s\n", ski)
+	peer := h.getOrCreatePeer(ski)
+	peer.connected = true
+	peer.lastSeen = time.Now()
+	h.broadcastPeerList()
+}
 
-func (h *hems) RemoteSKIDisconnected(service api.ServiceInterface, ski string) {}
+func (h *hems) RemoteSKIDisconnected(service api.ServiceInterface, ski string) {
+	fmt.Printf("Remote SKI disconnected: %s\n", ski)
+	peer := h.getPeer(ski)
+	if peer != nil {
+		peer.connected = false
+		h.broadcastPeerList()
+	}
+}
 
 func (h *hems) VisibleRemoteServicesUpdated(service api.ServiceInterface, entries []shipapi.RemoteService) {
+	fmt.Printf("Visible remote services updated: %d services\n", len(entries))
+
+	// Track discovered services
+	for _, entry := range entries {
+		peer := h.getOrCreatePeer(entry.Ski)
+		// Store device info from mDNS discovery
+		peer.deviceName = entry.Name
+		peer.brand = entry.Brand
+		peer.model = entry.Model
+		peer.deviceType = entry.Type
+		peer.serial = entry.Serial
+		peer.identifier = entry.Identifier
+		peer.connected = false // Will be updated when actually connected
+	}
+
+	// Broadcast peer list to frontend
+	h.broadcastPeerList()
+}
+
+// broadcastPeerList sends the current peer list to all WebSocket clients
+func (h *hems) broadcastPeerList() {
+	h.peersMu.Lock()
+	peers := make([]PeerInfo, 0, len(h.peers))
+	for ski, peer := range h.peers {
+		info := PeerInfo{
+			SKI:        ski,
+			Connected:  peer.connected,
+			LastSeen:   peer.lastSeen,
+			Usecases:   make(map[string]bool),
+			DeviceName: peer.deviceName,
+			Brand:      peer.brand,
+			Model:      peer.model,
+			DeviceType: peer.deviceType,
+			Serial:     peer.serial,
+			Identifier: peer.identifier,
+		}
+		for uc, supported := range peer.usecaseState {
+			info.Usecases[uc] = supported
+		}
+		peers = append(peers, info)
+	}
+	h.peersMu.Unlock()
+
+	msg := map[string]interface{}{
+		"type":  "peers",
+		"peers": peers,
+	}
+	b, err := json.Marshal(msg)
+	if err != nil {
+		h.Errorf("marshal peer list: %v", err)
+		return
+	}
+
+	h.wsMu.Lock()
+	defer h.wsMu.Unlock()
+	for c := range h.wsConns {
+		if err := c.WriteMessage(websocket.TextMessage, b); err != nil {
+			c.Close()
+			delete(h.wsConns, c)
+		}
+	}
 }
 
 func (h *hems) ServiceShipIDUpdate(ski string, shipdID string) {}
 
 func (h *hems) ServicePairingDetailUpdate(ski string, detail *shipapi.ConnectionStateDetail) {
-	if ski == remoteSki && detail.State() == shipapi.ConnectionStateRemoteDeniedTrust {
-		fmt.Println("The remote service denied trust. Exiting.")
+	fmt.Printf("Pairing detail update for %s: state=%v\n", ski, detail.State())
+
+	if detail.State() == shipapi.ConnectionStateRemoteDeniedTrust {
+		fmt.Printf("The remote service %s denied trust.\n", ski)
 		h.myService.CancelPairingWithSKI(ski)
 		h.myService.UnregisterRemoteSKI(ski)
-		h.myService.Shutdown()
-		os.Exit(0)
+		// Don't exit - just log the error for this peer
+		// The application continues running for other peers
 	}
 }
 
 func (h *hems) AllowWaitingForTrust(ski string) bool {
-	return ski == remoteSki
+	// Allow waiting for trust for all SKIs initially
+	return true
 }
 
 // UCEvseCommisioningConfigurationCemDelegate
@@ -1164,14 +1365,14 @@ func (h *hems) HandleEVSEDeviceState(ski string, failure bool, errorCode string)
 
 // main app
 func usage() {
-	fmt.Println("First Run:")
-	fmt.Println("  ./device-tester <serverport>")
+	fmt.Println("Usage:")
+	fmt.Println("  ./device-tester <serverport> [<crtfile> <keyfile>]")
 	fmt.Println()
-	fmt.Println("General Usage:")
-	fmt.Println("  ./device-tester <serverport> [<remoteski>] [<crtfile> <keyfile>]")
+	fmt.Println("The tool will automatically discover EEBUS devices on the network.")
+	fmt.Println("Use the web interface at http://localhost:8080 to view and connect to peers.")
 	fmt.Println()
-	fmt.Println("If a a cert and key are available in the exe directory as cert.pem and key.pem, they will be used automatically. Otherwise a new self-signed cert will be created and stored there.")
-
+	fmt.Println("If cert.pem and key.pem are available in the exe directory, they will be used automatically.")
+	fmt.Println("Otherwise, a new self-signed certificate will be created and stored there.")
 }
 
 func main() {
@@ -1195,9 +1396,13 @@ func main() {
 func (h *hems) Trace(args ...interface{}) {
 	// Always broadcast trace messages to frontend, even if tracing is disabled for stdout
 	value := fmt.Sprintln(args...)
+
+	// Try to extract SKI from the trace message for routing
+	ski := h.extractSKIFromMessage(value)
+
 	// broadcast (append to logs / send to WS)
 	ts := h.currentTimestamp()
-	line := fmt.Sprintf("%s TRACE %s", ts, value)
+	line := fmt.Sprintf("%s TRACE %s %s", ts, ski, value)
 	h.appendLog(strings.TrimRight(line, "\n"))
 	// still print to stdout if enabled
 	if h.config.Logging.EnableTrace {
@@ -1208,8 +1413,12 @@ func (h *hems) Trace(args ...interface{}) {
 func (h *hems) Tracef(format string, args ...interface{}) {
 	// Always broadcast formatted trace to frontend
 	value := fmt.Sprintf(format, args...)
+
+	// Try to extract SKI from the message
+	ski := h.extractSKIFromMessage(value)
+
 	ts := h.currentTimestamp()
-	line := fmt.Sprintf("%s TRACEF %s", ts, value)
+	line := fmt.Sprintf("%s TRACEF %s %s", ts, ski, value)
 	h.appendLog(strings.TrimRight(line, "\n"))
 	if h.config.Logging.EnableTrace {
 		fmt.Println(line)
@@ -1219,8 +1428,12 @@ func (h *hems) Tracef(format string, args ...interface{}) {
 func (h *hems) Debug(args ...interface{}) {
 	// Always broadcast debug messages to frontend
 	value := fmt.Sprintln(args...)
+
+	// Try to extract SKI from the message
+	ski := h.extractSKIFromMessage(value)
+
 	ts := h.currentTimestamp()
-	line := fmt.Sprintf("%s DEBUG %s", ts, value)
+	line := fmt.Sprintf("%s DEBUG %s %s", ts, ski, value)
 	h.appendLog(strings.TrimRight(line, "\n"))
 	if h.config.Logging.EnableDebug {
 		fmt.Printf("%s", line)
@@ -1233,8 +1446,12 @@ func (h *hems) Debug(args ...interface{}) {
 func (h *hems) Debugf(format string, args ...interface{}) {
 	// Always broadcast formatted debug messages to frontend
 	value := fmt.Sprintf(format, args...)
+
+	// Try to extract SKI from the message
+	ski := h.extractSKIFromMessage(value)
+
 	ts := h.currentTimestamp()
-	line := fmt.Sprintf("%s DEBUGF %s", ts, value)
+	line := fmt.Sprintf("%s DEBUGF %s %s", ts, ski, value)
 	h.appendLog(strings.TrimRight(line, "\n"))
 	if h.config.Logging.EnableDebug {
 		fmt.Println(line)
@@ -1260,6 +1477,50 @@ func (h *hems) Error(args ...interface{}) {
 func (h *hems) Errorf(format string, args ...interface{}) {
 	h.printFormat("ERRORF", format, args...)
 	debug.PrintStack()
+}
+
+// extractSKIFromMessage attempts to extract an SKI from a log message
+// Returns the SKI if found, empty string otherwise
+func (h *hems) extractSKIFromMessage(msg string) string {
+	// SKI format is typically 64 hex characters
+	// Look for patterns that might indicate an SKI
+
+	// Common patterns in EEBUS messages:
+	// - "ski:<SKI>"
+	// - "[SKI]"
+	// - SKI in path or identifier
+
+	// Check for known SKIs from our peer list
+	h.peersMu.Lock()
+	defer h.peersMu.Unlock()
+
+	for ski := range h.peers {
+		if strings.Contains(msg, ski) {
+			return ski
+		}
+	}
+
+	// Try to find a 64-character hex string (typical SKI length)
+	words := strings.Fields(msg)
+	for _, word := range words {
+		// Remove common delimiters
+		word = strings.Trim(word, "[]():;,.\"")
+		if len(word) == 64 {
+			// Check if it's valid hex
+			isHex := true
+			for _, c := range word {
+				if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+					isHex = false
+					break
+				}
+			}
+			if isHex {
+				return word
+			}
+		}
+	}
+
+	return ""
 }
 
 func (h *hems) currentTimestamp() string {
@@ -1301,8 +1562,12 @@ func (h *hems) getLogs() []string {
 
 func (h *hems) print(msgType string, args ...interface{}) {
 	value := fmt.Sprintln(args...)
+
+	// Try to extract SKI from the message
+	ski := h.extractSKIFromMessage(value)
+
 	ts := h.currentTimestamp()
-	line := fmt.Sprintf("%s %s %s", ts, msgType, value)
+	line := fmt.Sprintf("%s %s %s %s", ts, msgType, ski, value)
 	fmt.Printf("%s", line)
 	// also store in in-memory buffer
 	h.appendLog(strings.TrimRight(line, "\n"))
@@ -1310,23 +1575,74 @@ func (h *hems) print(msgType string, args ...interface{}) {
 
 func (h *hems) printFormat(msgType, format string, args ...interface{}) {
 	value := fmt.Sprintf(format, args...)
+
+	// Try to extract SKI from the message
+	ski := h.extractSKIFromMessage(value)
+
 	ts := h.currentTimestamp()
-	line := fmt.Sprintf("%s %s %s", ts, msgType, value)
+	line := fmt.Sprintf("%s %s %s %s", ts, msgType, ski, value)
 	fmt.Println(line)
 	h.appendLog(line)
 }
 
-// setUsecaseSupported updates the internal map and broadcasts the change to websocket clients
+// setUsecaseSupported updates the global state and broadcasts the change
 func (h *hems) setUsecaseSupported(name string, supported bool) {
-	h.ucMu.Lock()
-	defer h.ucMu.Unlock()
-	// only broadcast if changed
-	if old, ok := h.usecaseState[name]; ok && old == supported {
+	ucMu.Lock()
+	defer ucMu.Unlock()
+
+	// Update global state
+	if old, ok := h.globalUseCaseState[name]; ok && old == supported {
 		return
 	}
-	h.usecaseState[name] = supported
+	h.globalUseCaseState[name] = supported
+
+	// Update all peers
+	h.peersMu.Lock()
+	for _, peer := range h.peers {
+		peer.usecaseState[name] = supported
+	}
+	h.peersMu.Unlock()
+
+	// Broadcast per-peer usecase messages to websocket clients so frontend
+	// receives updates including the peer SKI (multi-peer aware)
+	h.wsMu.Lock()
+	defer h.wsMu.Unlock()
+	for ski := range h.peers {
+		msg := map[string]interface{}{"type": "usecase", "name": name, "supported": supported, "ski": ski}
+		b, err := json.Marshal(msg)
+		if err != nil {
+			h.Errorf("marshal usecase update: %v", err)
+			continue
+		}
+		for c := range h.wsConns {
+			if err := c.WriteMessage(websocket.TextMessage, b); err != nil {
+				c.Close()
+				delete(h.wsConns, c)
+			}
+		}
+	}
+}
+
+// setUsecaseSupportedForPeer sets usecase support for a specific peer
+func (h *hems) setUsecaseSupportedForPeer(peer *peerData, name string, supported bool) {
+	if peer == nil {
+		return
+	}
+
+	peer.usecaseState[name] = supported
+
+	// Also update global state
+	ucMu.Lock()
+	h.globalUseCaseState[name] = supported
+	ucMu.Unlock()
+
 	// broadcast a json message to websocket clients
-	msg := map[string]interface{}{"type": "usecase", "name": name, "supported": supported}
+	msg := map[string]interface{}{
+		"type":      "usecase",
+		"name":      name,
+		"supported": supported,
+		"ski":       peer.ski,
+	}
 	b, err := json.Marshal(msg)
 	if err != nil {
 		h.Errorf("marshal usecase update: %v", err)
@@ -1343,10 +1659,14 @@ func (h *hems) setUsecaseSupported(name string, supported bool) {
 	}
 }
 
-// updateEntitiesFromDevice updates the internal entities slice
-func (h *hems) updateEntitiesFromDevice(device spineapi.DeviceRemoteInterface) {
-	// update internal entities slice
-	h.entities = device.Entities()
+// updateEntitiesFromDevice updates the entities for a specific peer
+func (h *hems) updateEntitiesFromDevice(ski string, device spineapi.DeviceRemoteInterface, peer *peerData) {
+	if peer == nil || device == nil {
+		return
+	}
+
+	// update peer's entities slice
+	peer.entities = device.Entities()
 
 	// build JSON-friendly representation
 	type OpInfo struct {
@@ -1366,7 +1686,7 @@ func (h *hems) updateEntitiesFromDevice(device spineapi.DeviceRemoteInterface) {
 	}
 
 	var out []EntityInfo
-	for _, e := range h.entities {
+	for _, e := range peer.entities {
 		var ent EntityInfo
 		// Address and entity type
 		if e != nil {
@@ -1396,15 +1716,19 @@ func (h *hems) updateEntitiesFromDevice(device spineapi.DeviceRemoteInterface) {
 	}
 
 	// marshal and broadcast
-	msg := map[string]interface{}{"type": "entities", "entities": out}
+	msg := map[string]interface{}{
+		"type":     "entities",
+		"ski":      ski,
+		"entities": out,
+	}
 	b, err := json.Marshal(msg)
 	if err != nil {
 		h.Errorf("marshal entities: %v", err)
 		return
 	}
 
-	// cache last entities json
-	h.lastEntitiesJSON = b
+	// cache last entities json for this peer
+	peer.lastEntitiesJSON = b
 
 	h.wsMu.Lock()
 	defer h.wsMu.Unlock()
@@ -1488,20 +1812,18 @@ func (h *hems) startWebInterface() {
 			}
 		}
 
-		// also send current usecase state snapshot
-		h.ucMu.Lock()
-		for name, supported := range h.usecaseState {
+		// also send current global usecase state snapshot
+		ucMu.Lock()
+		for name, supported := range h.globalUseCaseState {
 			msg := map[string]interface{}{"type": "usecase", "name": name, "supported": supported}
 			if b, err := json.Marshal(msg); err == nil {
 				_ = c.WriteMessage(websocket.TextMessage, b)
 			}
 		}
-		h.ucMu.Unlock()
+		ucMu.Unlock()
 
-		// send last entities JSON snapshot if available
-		if h.lastEntitiesJSON != nil {
-			_ = c.WriteMessage(websocket.TextMessage, h.lastEntitiesJSON)
-		}
+		// send current peer list
+		h.broadcastPeerList()
 
 		// read loop to keep connection alive and detect close
 		for {
@@ -1668,9 +1990,40 @@ func (h *hems) startWebInterface() {
 	})
 
 	// endpoint: return usecaseData (current values) in JSON-friendly units
+	// Updated to support ski parameter for specific peer
 	http.HandleFunc("/api/usecasedata", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		if err := json.NewEncoder(w).Encode(h.usecaseData); err != nil {
+
+		ski := r.URL.Query().Get("ski")
+		if ski == "" {
+			// No SKI specified, return empty or first peer's data
+			// For backward compatibility, return first connected peer's data if available
+			h.peersMu.Lock()
+			for _, peer := range h.peers {
+				if peer.connected {
+					if err := json.NewEncoder(w).Encode(peer.usecaseData); err != nil {
+						h.Errorf("encode usecasedata: %v", err)
+					}
+					h.peersMu.Unlock()
+					return
+				}
+			}
+			h.peersMu.Unlock()
+			// No connected peers, return empty usecaseData
+			if err := json.NewEncoder(w).Encode(usecaseData{}); err != nil {
+				h.Errorf("encode usecasedata: %v", err)
+			}
+			return
+		}
+
+		peer := h.getPeer(ski)
+		if peer == nil {
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(map[string]string{"error": "peer not found"})
+			return
+		}
+
+		if err := json.NewEncoder(w).Encode(peer.usecaseData); err != nil {
 			h.Errorf("encode usecasedata: %v", err)
 		}
 	})
@@ -1690,14 +2043,14 @@ func (h *hems) startWebInterface() {
 	// new endpoint: return usecase support state
 	http.HandleFunc("/api/usecases", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		h.ucMu.Lock()
-		defer h.ucMu.Unlock()
+		ucMu.Lock()
+		defer ucMu.Unlock()
 		type UC struct {
 			Name      string `json:"name"`
 			Supported bool   `json:"supported"`
 		}
 		var out []UC
-		for name, supported := range h.usecaseState {
+		for name, supported := range h.globalUseCaseState {
 			out = append(out, UC{Name: name, Supported: supported})
 		}
 		if err := json.NewEncoder(w).Encode(out); err != nil {
@@ -1705,15 +2058,85 @@ func (h *hems) startWebInterface() {
 		}
 	})
 
-	// new endpoint: return last known entities JSON
+	// new endpoint: return entities for a specific peer
 	http.HandleFunc("/api/entities", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		if h.lastEntitiesJSON == nil {
+
+		ski := r.URL.Query().Get("ski")
+		if ski == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "ski parameter required"})
+			return
+		}
+
+		peer := h.getPeer(ski)
+		if peer == nil || peer.lastEntitiesJSON == nil {
 			// return empty array
 			_, _ = w.Write([]byte("[]"))
 			return
 		}
-		_, _ = w.Write(h.lastEntitiesJSON)
+
+		_, _ = w.Write(peer.lastEntitiesJSON)
+	})
+
+	// new endpoint: return all discovered peers
+	http.HandleFunc("/api/peers", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+
+		h.peersMu.Lock()
+		peers := make([]PeerInfo, 0, len(h.peers))
+		for ski, peer := range h.peers {
+			info := PeerInfo{
+				SKI:        ski,
+				Connected:  peer.connected,
+				LastSeen:   peer.lastSeen,
+				Usecases:   make(map[string]bool),
+				DeviceName: peer.deviceName,
+				Brand:      peer.brand,
+				Model:      peer.model,
+				DeviceType: peer.deviceType,
+				Serial:     peer.serial,
+				Identifier: peer.identifier,
+			}
+			for uc, supported := range peer.usecaseState {
+				info.Usecases[uc] = supported
+			}
+			peers = append(peers, info)
+		}
+		h.peersMu.Unlock()
+
+		if err := json.NewEncoder(w).Encode(peers); err != nil {
+			h.Errorf("encode peers: %v", err)
+		}
+	})
+
+	// new endpoint: connect to a discovered peer
+	http.HandleFunc("/api/connect", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
+
+		var payload struct {
+			SKI string `json:"ski"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "invalid json"})
+			return
+		}
+
+		if payload.SKI == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "ski parameter required"})
+			return
+		}
+
+		// Register the remote SKI to initiate connection
+		h.myService.RegisterRemoteSKI(payload.SKI, "")
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		json.NewEncoder(w).Encode(map[string]string{"status": "connecting", "ski": payload.SKI})
 	})
 
 	// new endpoint: return config to frontend

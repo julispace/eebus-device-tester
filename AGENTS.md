@@ -2,15 +2,23 @@
 
 ## Project Overview
 
-This application is an EEBUS device tester written in Go using the [eebus-go library](https://github.com/enbility/eebus-go). It simulates an Energy Management System (EMS) that connects to EEBUS-compatible devices (primarily EV chargers) for testing purposes.
+This application is an EEBUS device tester written in Go using the [eebus-go library](https://github.com/enbility/eebus-go). It simulates an Energy Management System (EMS) that discovers and connects to multiple EEBUS-compatible devices simultaneously for testing purposes.
 
 The program consists of:
 - **Backend**: Go application handling EEBUS protocol via SHIP/SPINE, usecase handlers, and REST API
-- **Frontend**: Single-page HTML/CSS/JS web application displaying data and providing control interfaces
+- **Frontend**: Single-page HTML/CSS/JS web application with tabbed interface for multiple peers
 
 For implementation status and pending tasks, see [STATUS.md](STATUS.md). This should be read before every task and updated after finishing the task.
 
 ## Architecture
+
+### Multi-Peer Support
+
+The application now supports simultaneous connections to multiple EEBUS devices. Each peer is identified by its SKI (Service Key Identifier) and maintains its own:
+- Usecase data
+- Entity tree
+- SPINE message trace log
+- Connection state
 
 ### Backend (main.go)
 
@@ -20,33 +28,68 @@ The backend is a single-file Go application (`main.go`) containing:
    - Certificate handling and generation
    - Service configuration with device identity
    - Usecase initialization and registration
+   - Automatic peer discovery via mDNS
 
-2. **Usecase Handlers**
+2. **Peer Management**
+   - `peerData` struct holds per-peer data (usecaseData, entities, connection state)
+   - `peers map[string]*peerData` tracks all discovered peers keyed by SKI
+   - Peer discovery via `VisibleRemoteServicesUpdated` callback
+   - Connection tracking via `RemoteSKIConnected`/`RemoteSKIDisconnected`
+
+3. **Usecase Handlers**
    - Event handlers for each supported usecase
-   - Data extraction and storage in `usecaseData` struct
+   - Data extraction and storage in peer's `usecaseData` struct
+   - Handlers receive SKI parameter to identify the peer
 
-3. **Write Functions**
+4. **Write Functions**
    - Functions to send commands to remote devices
-   - If the usecase has these write functions there should be write functions implemented
+   - All write operations target specific peers via SKI parameter
 
-4. **Web Interface**
+5. **Web Interface**
    - HTTP server on port 8080
    - WebSocket endpoint for real-time log streaming
    - REST API endpoints:
-     - `POST /api/write` - Send commands to devices
-     - `GET /api/usecasedata` - Get current usecase data
-     - `GET /api/usecases` - Get supported usecases list
-     - `GET /api/entities` - Get discovered entities
+     - `GET /api/peers` - List all discovered peers with status and device info
+     - `POST /api/connect` - Connect to a discovered peer by SKI
+     - `GET /api/usecasedata?ski=<ski>` - Get usecase data for specific peer
+     - `GET /api/entities?ski=<ski>` - Get entities for specific peer
+     - `POST /api/write` - Send commands to specific peer (includes ski parameter)
+     - `GET /api/config` - Get configuration
      - `GET /ws/logs` - WebSocket for logs and updates
 
-5. **Data Structures**
-   - `usecaseData` struct holds all usecase values
-   - `hems` struct is the main application struct with service, usecases, and state
+6. **Data Structures**
+   - `usecaseData` struct holds all usecase values per peer
+   - `peerData` struct holds per-peer state
+   - `hems` struct is the main application struct with service, usecases, and peer map
 
-6. **Configuration System**
+7. **Configuration System**
    - `config.json` file for enabling/disabling usecases
    - Loaded at startup; if not found, all usecases are enabled by default
    - Configuration served to frontend via `GET /api/config`
+
+### Frontend (web/index.html)
+
+The frontend features a tabbed interface:
+
+1. **Peers List Tab** (Default)
+   - Table of all discovered EEBUS devices
+   - Columns: Status, SKI (full), Device Info (brand, model, type, serial), Actions
+   - "Connect" button for disconnected peers (initiates SHIP connection)
+   - "Open" button for connected peers (opens peer tab)
+   - Auto-refreshes every 5 seconds
+
+2. **Peer Tabs** (One per connected device)
+   - Tab label shows truncated SKI or device name
+   - Status indicator (green = connected, red = disconnected)
+   - Close button (x) on each peer tab
+   - Left column: Data and Control panel + Entities tree
+   - Right column: SPINE Messages + Trace Log (with subtabs)
+
+3. **JavaScript State Management**
+   - `peersState` - Central state object
+   - `peerData` - Per-peer data storage keyed by SKI
+   - WebSocket messages routed by SKI to appropriate peer
+   - Active peer data refreshed every 2 seconds
 
 ### Frontend (web/index.html)
 
